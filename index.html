@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#f3efe6">
+<meta name="apple-mobile-web-app-title" content="표잡기 v3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>국궁 표잡기 v3</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>
+/* VOICE: 활터의 차분한 도구 — 한 화면에 한 가지 일만
+   IDEA: 사대에서 보는 145m 과녁, 그 위에 반투명 조준판
+   PICTURE: 화면 전체를 채우는 과녁과 움직이는 표
+   COLOUR and TYPE: 과녁의 흰 바탕·검은 띠·홍심 빨강, 한지색 바탕 / 시스템 고딕
+   LAYOUT: 단계별 전체 화면, 과녁 위에 슬라이더가 떠 있는 구성 */
+:root{--paper:#f3efe6;--ink:#211c18;--ink2:#6b6358;--line:#d8d0c2;--red:#c2362b;--blue:#1f5fbf;--ok:#2f7d4f;--hh:56px}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;overflow:hidden;overscroll-behavior:none}
+button{font:inherit;color:inherit}
+.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;min-height:44px}
+.btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.red{background:var(--red);color:#fff;border-color:var(--red)}
+.btn:disabled{opacity:.45}
+header{height:var(--hh);display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid var(--line);background:var(--paper);padding-top:env(safe-area-inset-top)}
+header h1{font-size:15px;margin:0;flex:1;white-space:nowrap}
+.steps{display:flex;gap:4px}
+.steps span{font-size:12px;font-weight:700;padding:5px 9px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--ink2);white-space:nowrap}
+.steps span.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.steps span.done{color:var(--ok);border-color:var(--ok)}
+.ic{flex:none;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:17px;cursor:pointer}
+main{position:absolute;inset:var(--hh) 0 0 0}
+.stage{position:absolute;inset:0}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+/* 과녁 위 반투명 정보·조작판 */
+.glass{background:rgba(255,255,255,.62);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.7);box-shadow:0 6px 20px rgba(0,0,0,.12);border-radius:14px}
+.top{position:absolute;left:10px;right:10px;top:10px;display:flex;gap:8px;align-items:stretch;pointer-events:none}
+.top>*{pointer-events:auto}
+.wxcard{display:flex;align-items:center;gap:7px;flex:1;min-width:0;overflow:hidden}
+.wxcard .t{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.wxcard .t b,.wxcard .t small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wxcard b{font-size:13.5px;line-height:1.25}
+.wxcard small{font-size:11px;color:var(--ink2);line-height:1.3}
+.panel{position:absolute;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));padding:8px 10px;max-width:620px;margin:0 auto}
+.sl{display:grid;grid-template-columns:62px 1fr 92px;gap:8px;align-items:center;margin:2px 0}
+.sl label{font-size:13px;font-weight:700}
+.sl output{font-size:13px;font-weight:800;text-align:right;white-space:nowrap}
+.sl .ends{grid-column:2;display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink2);margin-top:-6px}
+input[type=range]{width:100%;height:28px;accent-color:var(--ink);background:transparent}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row .grow{flex:1}
+.hint{font-size:12.5px;color:var(--ink2);line-height:1.45}
+.big{font-size:20px;font-weight:800;line-height:1.3}
+.tog{font-size:12.5px;padding:7px 10px;min-height:36px}
+.tog.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+/* 모달·시트 */
+.veil{position:fixed;inset:0;background:rgba(20,16,12,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+.veil[hidden]{display:none}
+.sheet{background:var(--paper);border-radius:16px;padding:18px;width:min(460px,100%);max-height:92%;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.sheet h2{font-size:19px;margin:0 0 6px}
+.sheet p{margin:6px 0}
+.dir16{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.dir16 button{padding:9px 0;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:13px;cursor:pointer}
+.dir16 button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.field{font:inherit;font-size:16px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;width:100%}
+.err{color:#a8402c}
+.hits{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.hits .btn{text-align:left;font-weight:600}
+.res{border-radius:12px;padding:10px 12px;margin:8px 0;background:#fff;border:1px solid var(--line)}
+.res.ok{border-color:var(--ok);background:#eef7f1}
+.res.bad{border-color:var(--red);background:#fbefed}
+.chk{display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:13.5px}
+.chk input{width:20px;height:20px;margin-top:1px;accent-color:var(--red)}
+/* 개인 기준: 어둡게 가리지 않고 과녁 위에 반투명으로 떠서, 간격을 바꾸면 표가 움직이는 게 그대로 보이게 */
+#vPers{background:transparent;align-items:flex-end;pointer-events:none;padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
+#vPers .sheet{pointer-events:auto;background:rgba(255,255,255,.62);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.7);box-shadow:0 6px 20px rgba(0,0,0,.15);width:min(620px,100%);padding:12px 14px;max-height:58%}
+#vPers .btn{font-size:12.5px;padding:7px 10px;min-height:36px}
+#vPers .bzfine .btn{min-height:30px;padding:4px 9px;font-size:12px}
+.bzfine{justify-content:center;gap:6px;margin:0 0 4px 70px}.bzfine .btn{min-height:34px;padding:5px 10px}
+#vPers h2{font-size:16px;margin:0 0 2px}
+#vPers .sheet>p{font-size:12px;margin:2px 0 6px}
+#vPers .hint[style]{font-size:11px;margin:-6px 0 4px 70px !important}
+.nudge{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;width:52px;min-height:48px;padding:3px 2px;font-size:13px;line-height:1.15;cursor:pointer;color:var(--ink);user-select:none;-webkit-user-select:none;touch-action:none}
+.nudge b{font-size:10.5px;font-weight:800}
+.nudge.pn{width:50px;min-height:46px;font-size:12.5px}.nudge.pn b{font-size:9.5px}#pDn{color:#b5651d}#pUp{color:#2f5f8f}
+.nudge small{font-size:9.5px;color:var(--ink2);font-weight:700;min-height:1em}
+.nudge:active{background:rgba(33,28,24,.85);color:#fff}.nudge:active small{color:#ddd}
+#v3d{position:fixed;inset:0;z-index:50;background:#cfdde6}
+#v3d[hidden]{display:none}
+#w3d{position:absolute;inset:0}
+#w3d canvas{display:block;width:100%;height:100%;touch-action:none}
+.viewbar{position:absolute;left:10px;right:10px;top:calc(10px + env(safe-area-inset-top));display:flex;gap:6px;flex-wrap:wrap;z-index:2}
+.viewbar button{font:inherit;font-size:13px;border:1px solid rgba(31,28,24,.25);background:rgba(244,239,228,.92);padding:7px 11px;border-radius:7px;cursor:pointer}
+.viewbar button.on{background:var(--ink);color:var(--paper)}
+.viewbar .x{font-weight:800}
+.legend3{position:absolute;left:10px;bottom:var(--nh,10px);background:rgba(244,239,228,.88);border:1px solid rgba(31,28,24,.18);border-radius:9px;padding:5px 10px;font-size:12px;line-height:1.6;z-index:2;max-width:min(340px,calc(100% - 20px))}
+.legend3 i{display:inline-block;width:16px;height:4px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.story3{position:absolute;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:2;background:rgba(31,28,24,.82);color:#fff;border-radius:10px;padding:9px 14px;font-size:14px;line-height:1.5;font-weight:500;text-align:center}
+.story3:empty{display:none}
+.d3msg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:14px;color:var(--ink2);text-align:center;padding:0 20px}
+.hitrow{font-size:12.5px;margin-bottom:4px;gap:6px}
+.hitrow .btn{min-height:30px;padding:4px 9px;font-size:12px}
+.hitask{position:absolute;left:12px;right:12px;top:70px;z-index:4;padding:12px 14px;max-width:460px;margin:0 auto;border:2px solid var(--red)}
+.hitask .t{font-size:15px;font-weight:800;line-height:1.4}
+.hitask .s{font-size:12.5px;line-height:1.5;margin:4px 0 8px}
+.hitask .row .btn{min-height:40px;padding:8px 14px}
+/* 길게 누를 때 복사·붙여넣기 메뉴나 글자 선택이 뜨지 않게 */
+html,body,main,.stage,#cv,header,.panel,.nudge{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+#toast{position:fixed;left:50%;top:calc(var(--hh) + 74px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(31,28,24,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
+#toast.on{opacity:1}
+@media (max-width:480px){.steps span{padding:4px 7px;font-size:11.5px}header h1{display:none}.sl{grid-template-columns:54px 1fr 84px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wxcard" id="wxCard"></div>
+  <button class="ic" id="wxBtn" aria-label="주변 날씨 읽기" title="주변 날씨 읽기">📍</button>
+  <button class="ic" id="b3d" aria-label="바람 3D 보기" title="바람 3D 보기" style="font-size:13px;font-weight:800">3D</button>
+  <button class="ic" id="persBtn" aria-label="개인 기준" title="개인 기준">⚙</button>
+</header>
+<main>
+  <div class="stage">
+    <canvas id="cv"></canvas>
+
+    <!-- ② 과녁 상하좌우 바람 버튼: 누를 때마다 0.2 m/s, 누르고 있으면 계속 -->
+    <button class="nudge glass" id="nU" data-k="x" data-d="-1" hidden>▲<b>맞바람</b><small id="nUv"></small></button>
+    <button class="nudge glass" id="nD" data-k="x" data-d="1" hidden>▼<b>뒷바람</b><small id="nDv"></small></button>
+    <button class="nudge glass" id="nL" data-k="z" data-d="1" hidden>◀<b>왼쪽<br>바람</b><small id="nLv"></small></button>
+    <button class="nudge glass" id="nR" data-k="z" data-d="-1" hidden>▶<b>오른쪽<br>바람</b><small id="nRv"></small></button>
+    <button class="nudge glass pn" id="pDn" hidden>⬇<b>누르는<br>바람</b><small id="pDnv"></small></button>
+    <button class="nudge glass pn" id="pUp" hidden>⬆<b>올리는<br>바람</b><small id="pUpv"></small></button>
+    <div class="glass hitask" id="hitAsk" hidden></div>
+    <!-- ② 표잡기: 반투명 슬라이더 -->
+    <div class="glass panel" id="pAim" hidden>
+      <input id="sP" type="hidden"><output id="oP" hidden></output>
+
+      <input id="sZ" type="hidden" value="0"><input id="sX" type="hidden" value="0"><output id="oZ" hidden></output><output id="oX" hidden></output>
+      <div class="row hitrow" id="hitRow"></div>
+      <div class="row"><span class="grow hint" id="aimWords"></span><button class="btn tog" id="guideBtn">〰 안내선</button><button class="btn tog" id="wind0">바람 0</button></div>
+    </div>
+
+    <!-- ③ 설정한 표로 쏘고 확인 -->
+    <div class="glass panel" id="pCheck" hidden>
+      <div id="chkBody"></div>
+    </div>
+  </div>
+</main>
+
+<!-- ① 시작: 날씨 읽기 -->
+<div class="veil" id="vStart" hidden>
+  <div class="sheet">
+    <h2>주변 날씨 정보를 읽겠습니까?</h2>
+    <p class="hint">휴대폰 위치로 지금 이 자리의 기압·바람을 받아 표를 자동으로 옮겨 둡니다. 바람은 지역 평균값이라 활터 바람과 다를 수 있어 설정한 표로 쏜 뒤 떨어진 자리로 확인합니다.</p>
+    <div id="startMsg" class="hint" style="min-height:1.4em"></div>
+    <div class="row" style="margin-top:10px"><button class="btn red grow" id="startYes">예, 읽어 주세요</button><button class="btn grow" id="startNo">닫기</button></div>
+  </div>
+</div>
+
+<!-- 활터 방향 정하기 -->
+<div class="veil" id="vDir" hidden>
+  <div class="sheet">
+    <h2>사대 → 과녁 방향</h2>
+    <p class="hint">처음 온 활터입니다. 사대에서 과녁 쪽이 어느 방위인지 한 번만 정하면 다음부터는 자동으로 알아봅니다.</p>
+    <div class="dir16" id="dir16"></div>
+    <div class="row"><button class="btn grow" id="cmpBtn">📱 휴대폰 나침반으로 재기</button></div>
+    <div class="hint" id="cmpVal" style="min-height:1.4em;margin:4px 0"></div>
+    <div class="row"><input class="field" id="rgName" placeholder="활터 이름 (예: 황학정)" style="flex:1"></div>
+    <div class="row" style="margin-top:10px"><button class="btn red grow" id="dirSave" disabled>저장하고 바람 넣기</button><button class="btn" id="dirCancel">취소</button></div>
+  </div>
+</div>
+
+<!-- 위치 권한·지역 검색 -->
+<div class="veil" id="vLoc" hidden>
+  <div class="sheet">
+    <h2 id="locTitle">위치를 쓸 수 없습니다</h2>
+    <div class="hint" id="locSteps"></div>
+    <div class="row" style="margin-top:8px"><input class="field" id="locQ" placeholder="동네 이름 (예: 사직동)" style="flex:1"><button class="btn" id="locFind">🔎 찾기</button></div>
+    <div class="hits" id="locHits"></div>
+    <div class="row" style="margin-top:12px"><button class="btn grow" id="locRetry">↻ 위치 다시 시도</button><button class="btn grow" id="locManual">직접 맞추기</button></div>
+  </div>
+</div>
+
+<!-- 개인 기준 -->
+<div class="veil" id="vPers" hidden>
+  <div class="sheet">
+    <h2>⚙ 개인 기준 (표 간격)</h2>
+    <p class="hint">슬라이더대로 옮긴 표가 실제와 맞지 않으면 여기서 간격을 고칩니다. 이 값은 이 기기에 따로 저장되어 <b>오늘 값을 지워도 그대로</b> 남습니다.</p>
+    <div class="sl"><label for="kB">상하 기준</label><input id="kB" type="range" min="0" max="4.2" step="0.05"><output id="oB"></output></div>
+    <div class="hint" style="margin:-2px 0 6px 70px">평기압(1007~1019 hPa)일 때 겨냥 높이</div>
+    <div class="sl"><label for="kBZ">기준 좌우</label><input id="kBZ" type="range" min="-1" max="1" step="0.01" list="bzTicks"><output id="oBZ"></output></div>
+    <datalist id="bzTicks"><option value="0"></option></datalist>
+    <div class="row bzfine"><button class="btn tog" id="bzL">◀ 1cm</button><button class="btn tog" id="bz0">가운데(0)</button><button class="btn tog" id="bzR">1cm ▶</button></div>
+    <div class="hint" style="margin:-2px 0 6px 70px">바람이 없어도 표가 한쪽으로 쏠리는 분: 기준표를 좌우로 옮깁니다</div>
+    <div class="sl"><label for="kP">고기압</label><input id="kP" type="range" min="1" max="60" step="1"><output id="oKP"></output></div>
+    <div class="hint" style="margin:-2px 0 6px 70px">1019 hPa를 넘은 1 hPa당 위로 이동 (공기 밀도가 높아져 따로 맞춤)</div>
+    <div class="sl"><label for="kPL">저기압</label><input id="kPL" type="range" min="1" max="60" step="1"><output id="oKPL"></output></div>
+    <div class="hint" style="margin:-2px 0 6px 70px">1007 hPa보다 낮은 1 hPa당 아래로 이동 (공기 밀도가 줄어 따로 맞춤)</div>
+    <div class="sl"><label for="kZ">좌우</label><input id="kZ" type="range" min="5" max="50" step="1"><output id="oKZ"></output></div>
+    <div class="hint" style="margin:-2px 0 6px 70px">옆바람 1 m/s당 좌우 이동</div>
+    <div class="sl"><label for="kX">앞뒤</label><input id="kX" type="range" min="5" max="50" step="1"><output id="oKX"></output></div>
+    <div class="hint" style="margin:-2px 0 6px 70px">맞바람·순풍 1 m/s당 위아래 이동</div>
+    <div class="row" style="margin-top:10px"><button class="btn red" id="persFix">지금 값을 초기값으로 고정</button><button class="btn" id="persFactory">초기값으로</button><span class="grow"></span><button class="btn pri" id="persClose">닫기</button></div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0 10px">
+    <div class="row"><span class="hint grow">오늘 기압·바람만 지우기 (개인 기준은 유지)</span><button class="btn" id="resetToday">오늘 값 지우기</button></div>
+  </div>
+</div>
+
+<!-- 바람 3D 보기 (v2 환경 화면 구성) -->
+<div id="v3d" hidden>
+  <div id="w3d"></div>
+  <div class="viewbar"><button id="c3d" class="x">✕</button><button data-v="side" class="on">측면 전체</button><button data-v="archer">사대 시점</button><button data-v="target">과녁 근접</button><button data-v="top">위에서</button></div>
+  <div class="legend3" id="lg3d"></div>
+  <div class="story3" id="i3d"></div>
+  <div class="d3msg" id="m3d">3D 화면을 불러오는 중…</div>
+</div>
+<div id="toast"></div>
+
+<script>
+{
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = (v, d = 1) => (Math.round(v * 10 ** d) / 10 ** d).toFixed(d);
+
+// ---------- 과녁 (2 × 2.67 m, 15° 기울기는 정면 모습으로) ----------
+const TW = 2, TH = 2.67;
+const FACE = { bandTop: TH * 0.877, bandBot: TH * 0.77, bandHalf: 0.72, boxTop: TH * 0.67, boxBot: TH * 0.12, boxHalf: 0.70, r: 0.50 };
+const CY = (FACE.boxTop + FACE.boxBot) / 2;   // 홍심 중심
+const P_LO = 1007, P_HI = 1019;
+
+// ---------- 저장: 개인 기준(따로 영구 보관) / 오늘 상태 ----------
+const FACT = { baseY: TH * 0.75, baseZ: 0, perHpa: 0.07, perHpaLo: 0.05, kw: 0.20, kx: 0.25 };   // 저기압 쪽은 공기가 덜 저항하는 만큼 간격을 따로(기본 작게)
+const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ? Object.assign({}, d, v) : { ...d }; } catch (e) { return { ...d }; } };
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+// 초기값: 사용자가 '지금 값을 초기값으로 고정'을 누르면 그 값이 초기값이 된다 (없으면 공장값)
+let DEF = load('gukgung3-def', FACT);
+let P = load('gukgung3-pers', DEF);
+const TODAY0 = () => ({ step: 2, pressure: 1013, tempC: 15, w: { x: 0, z: 0 }, wx: null, range: null, shots: [], hits: [] });
+let S = load('gukgung3-today', TODAY0());
+const saveP = () => store('gukgung3-pers', P), saveS = () => store('gukgung3-today', S);
+let guide = (() => { try { return localStorage.getItem('gukgung3-guide') !== '0'; } catch (e) { return true; } })();
+
+// ---------- 표 계산 ----------
+const excess = p => p > P_HI ? p - P_HI : p < P_LO ? p - P_LO : 0;
+const perOf = (ex, o = P) => ex < 0 ? (o.perHpaLo ?? o.perHpa) : o.perHpa;   // 고기압/저기압 간격을 따로
+const pShift = () => perOf(excess(S.pressure)) * excess(S.pressure);          // 고기압 → 화살이 덜 가므로 위로, 저기압 → 아래로
+const center0 = () => ({ z: P.baseZ || 0, y: P.baseY + pShift() });      // 바람 안내선 0 = 무풍 기준 표 (사람마다 좌우로 쏠린 기준표 반영)
+const aim = () => { const c = center0(); return { z: c.z - P.kw * S.w.z, y: c.y - P.kx * S.w.x }; };   // 바람이 불어오는 쪽으로
+const pClass = p => p < 995 ? '강한 저기압' : p < P_LO ? '저기압' : p <= P_HI ? '평기압' : p <= 1030 ? '고기압' : '강한 고기압';
+const cm = m => Math.round(m * 100);
+function aimWords(a){
+  const dy = a.y - P.baseY, dz = a.z - (P.baseZ || 0), parts = [];
+  if (Math.abs(dy) >= 0.02) parts.push(`${dy > 0 ? '위' : '아래'}로 ${cm(Math.abs(dy))} cm`);
+  if (Math.abs(dz) >= 0.02) parts.push(`${dz > 0 ? '오른쪽' : '왼쪽'}으로 ${cm(Math.abs(dz))} cm`);
+  return parts.length ? `기준표에서 ${parts.join(', ')}` : '기준표 그대로';
+}
+function windWords(w){
+  const p = [];
+  if (Math.abs(w.x) >= 0.05) p.push(`${w.x < 0 ? '맞바람' : '순풍'} ${fmt(Math.abs(w.x))}`);
+  if (Math.abs(w.z) >= 0.05) p.push(`${w.z > 0 ? '왼쪽에서' : '오른쪽에서'} ${fmt(Math.abs(w.z))}`);
+  return p.length ? p.join(' · ') + ' m/s' : '바람 없음';
+}
+
+// ---------- 그리기 ----------
+const cv = $('cv'); let view = null;
+function fit(){
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { g, w: r.width, h: r.height };
+}
+function draw(){
+  const { g, w, h } = fit();
+  // 위 날씨 카드와 아래 조작판을 피해 과녁이 보이는 칸을 정한다
+  // 표잡기: 위 정보 카드 + ▲ 버튼 아래, 아래 ▼·기압풍 버튼 위까지만 과녁을 그린다 → 표를 올리거나 내려도 가려지지 않게
+  const nudgeRow = S.step === 2 && $('vPers').hidden ? 56 : 0;
+  const topH = 8 + nudgeRow;
+  const panel = !$('vPers').hidden ? $('vPers').querySelector('.sheet') : !$('pAim').hidden ? $('pAim') : !$('pCheck').hidden ? $('pCheck') : null;
+  // 쏘고 확인 단계는 아래 판에 가려지지 않게 판 높이만큼 비워 둔다 (짧은 화살도 누를 수 있게)
+  const botH = panel ? panel.offsetHeight * (!$('vPers').hidden ? 0.85 : S.step === 3 ? 1 : S.step === 2 ? 1 : 0.55) + 12 + nudgeRow : 12;
+  const a = aim(), c0 = center0();
+  // 과녁 둘레 여백: 아래로 1.6 m(짧은 화살), 위로 0.6 m, 좌우 0.9 m까지 늘 보이게
+  const mg = S.step === 3 ? { s: 0.9, b: 1.6, t: 0.6 } : { s: 0.3, b: 0.35, t: 0.35 };
+  const pts = [{ z: -TW / 2 - mg.s, y: -mg.b }, { z: TW / 2 + mg.s, y: TH + mg.t }, a, ...S.shots, ...(S.hits || []).slice(-12)];
+  if (S.step === 3 && !finalView) pts.push(expected());
+  let zmin = Math.min(...pts.map(p => p.z)) - 0.35, zmax = Math.max(...pts.map(p => p.z)) + 0.35;
+  let ymin = Math.min(...pts.map(p => p.y)) - 0.3, ymax = Math.max(...pts.map(p => p.y)) + 0.35;
+  const m = Math.max(Math.abs(zmin), Math.abs(zmax)); zmin = -m; zmax = m;   // 과녁을 가운데에
+  const fh = Math.max(120, h - topH - botH);
+  const side = S.step === 2 ? 128 : 20;   // 표잡기에서는 좌우 버튼 자리를 비운다
+  const s = Math.min((w - side) / (zmax - zmin), fh / (ymax - ymin)) * 0.8;   // 과녁을 조금 작게 → 둘레 여유를 넓게
+  const cz = 0, cyv = (ymin + ymax) / 2, oy = topH + fh / 2;
+  const X = z => w / 2 + (z - cz) * s, Y = y => oy - (y - cyv) * s;
+  view = { X, Y, s, box: { w, h, top: topH, bot: botH }, inv: (px, py) => ({ z: (px - w / 2) / s + cz, y: (oy - py) / s + cyv }) };
+  // 하늘·땅
+  g.fillStyle = '#e9e4d8'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(33,28,24,.06)'; g.lineWidth = 1;
+  for (let z = Math.floor(zmin - 5); z <= zmax + 5; z += 0.5) { g.beginPath(); g.moveTo(X(z), 0); g.lineTo(X(z), h); g.stroke(); }
+  for (let y = -10; y <= 15; y += 0.5) { g.beginPath(); g.moveTo(0, Y(y)); g.lineTo(w, Y(y)); g.stroke(); }
+  g.fillStyle = '#a3b38a'; g.fillRect(0, Y(0), w, h - Y(0));
+  // 과녁
+  const F = FACE;
+  g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(X(-TW / 2) + 5, Y(TH) + 6, TW * s, TH * s);
+  g.fillStyle = '#f7f5ef'; g.fillRect(X(-TW / 2), Y(TH), TW * s, TH * s);
+  g.fillStyle = '#211c18';
+  g.fillRect(X(-F.bandHalf), Y(F.bandTop), 2 * F.bandHalf * s, (F.bandTop - F.bandBot) * s);
+  g.fillRect(X(-F.boxHalf), Y(F.boxTop), 2 * F.boxHalf * s, (F.boxTop - F.boxBot) * s);
+  g.fillStyle = '#c8362b'; g.beginPath(); g.arc(X(0), Y(CY), F.r * s, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(31,28,24,.35)'; g.lineWidth = 1; g.strokeRect(X(-TW / 2), Y(TH), TW * s, TH * s);
+  // 상하 기준선
+  g.setLineDash([5, 5]); g.strokeStyle = 'rgba(31,95,191,.55)'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(X(-TW / 2 - 0.2), Y(P.baseY)); g.lineTo(X(TW / 2 + 0.2), Y(P.baseY)); g.stroke(); g.setLineDash([]);
+  if (Math.abs(P.baseZ || 0) >= 0.005) { g.strokeStyle = 'rgba(31,95,191,.8)'; g.lineWidth = 2; g.beginPath(); g.moveTo(X(P.baseZ), Y(P.baseY) - 8); g.lineTo(X(P.baseZ), Y(P.baseY) + 8); g.stroke(); }
+  // 바람 안내선: 무풍 기준 표를 중심으로 1 m/s마다 얇은 타원
+  if (guide) {
+    const kz = P.kw * s, kx = P.kx * s, cx = X(c0.z), cy = Y(c0.y);
+    g.save(); g.strokeStyle = 'rgba(194,54,43,.45)'; g.lineWidth = 0.8; g.setLineDash([2, 3]);
+    for (let n = 1; n <= 6; n++) { g.beginPath(); g.ellipse(cx, cy, n * kz, n * kx, 0, 0, Math.PI * 2); g.stroke(); }
+    g.setLineDash([]); g.strokeStyle = 'rgba(194,54,43,.35)';
+    g.beginPath(); g.moveTo(cx - 6.5 * kz, cy); g.lineTo(cx + 6.5 * kz, cy); g.moveTo(cx, cy - 6.5 * kx); g.lineTo(cx, cy + 6.5 * kx); g.stroke();
+    g.fillStyle = 'rgba(160,30,22,.75)'; g.font = '600 10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (let n = 1; n <= 6; n++) { g.fillText(n, cx + n * kz, cy - 7); g.fillText(n, cx + 7, cy - n * kx); }
+    g.restore();
+  }
+  // 표 / 확인용 겨냥점 / 예상 착점 / 화살
+  if (S.step === 3 && !finalView) {
+    const ex = expected();
+    mark(g, X(a.z), Y(a.y), '#c2362b', '오늘 표');
+    g.save(); g.strokeStyle = '#1f5fbf'; g.lineWidth = 2; g.setLineDash([4, 3]); g.beginPath(); g.arc(X(ex.z), Y(ex.y), 13, 0, Math.PI * 2); g.stroke(); g.restore();
+    label(g, '맞아야 할 자리', X(ex.z) + 16, Y(ex.y) + 18, '#1f5fbf');
+    S.shots.forEach((p, i) => { g.fillStyle = '#123d8a'; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(X(p.z), Y(p.y), 9, 0, Math.PI * 2); g.fill(); g.stroke(); g.fillStyle = '#fff'; g.font = '800 11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(i + 1, X(p.z), Y(p.y) + 0.5); });
+  } else { drawHits(g, X, Y); mark(g, X(a.z), Y(a.y), '#c2362b', '오늘 표'); }
+  placeNudges();
+}
+function label(g, t, x, y, col){ g.font = '800 13px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.92)'; g.strokeText(t, x, y); g.fillStyle = col; g.fillText(t, x, y); }
+function mark(g, x, y, col, t){
+  const cross = () => { g.beginPath(); g.arc(x, y, 15, 0, Math.PI * 2); g.moveTo(x - 24, y); g.lineTo(x - 7, y); g.moveTo(x + 7, y); g.lineTo(x + 24, y); g.moveTo(x, y - 24); g.lineTo(x, y - 7); g.moveTo(x, y + 7); g.lineTo(x, y + 24); };
+  g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 6; cross(); g.stroke();
+  g.strokeStyle = col; g.lineWidth = 2.5; cross(); g.stroke();
+  g.fillStyle = col; g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill();
+  if (t) label(g, t, x + 20, y - 17, col);
+}
+
+// ---------- 위 날씨 카드: 기압계 + 바람 화살표 ----------
+function gaugeSVG(p){
+  const t = clamp((p - 960) / 90, 0, 1), ang = Math.PI * (1 - t), nx = 26 + 20 * Math.cos(ang), ny = 28 - 20 * Math.sin(ang);
+  const arc = (a0, a1, col) => { const x0 = 26 + 22 * Math.cos(Math.PI * (1 - a0)), y0 = 28 - 22 * Math.sin(Math.PI * (1 - a0)), x1 = 26 + 22 * Math.cos(Math.PI * (1 - a1)), y1 = 28 - 22 * Math.sin(Math.PI * (1 - a1)); return `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} A22 22 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}" stroke="${col}" stroke-width="5" fill="none"/>`; };
+  const f = v => (v - 960) / 90;
+  return `<svg width="40" height="26" viewBox="0 0 52 34">${arc(0, f(P_LO), '#5b86b8')}${arc(f(P_LO), f(P_HI), '#9aa48a')}${arc(f(P_HI), 1, '#d9901a')}<line x1="26" y1="28" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="#211c18" stroke-width="2.5" stroke-linecap="round"/><circle cx="26" cy="28" r="3" fill="#211c18"/></svg>`;
+}
+function windSVG(w){
+  const sp = Math.hypot(w.x, w.z), col = sp < 1.6 ? '#3b82c4' : sp < 3.4 ? '#d9901a' : '#d2382c';
+  if (sp < 0.3) return `<svg width="32" height="32" viewBox="-19 -19 38 38"><circle r="17" fill="#fff" stroke="#ccc"/><text y="4" text-anchor="middle" font-size="10" fill="#666">무풍</text></svg>`;
+  const deg = Math.atan2(-w.x, w.z) * 180 / Math.PI;   // 불어 가는 방향, 화면 위 = 과녁 쪽
+  return `<svg width="32" height="32" viewBox="-19 -19 38 38"><circle r="17" fill="#fff" stroke="${col}" stroke-opacity=".4" stroke-width="2"/><rect x="-4" y="-16" width="8" height="4" fill="#211c18"/><g transform="rotate(${deg.toFixed(1)})"><line x1="-11" y1="0" x2="5" y2="0" stroke="${col}" stroke-width="4.5" stroke-linecap="round"/><path d="M13 0 L3 -7 L3 7 Z" fill="${col}"/></g></svg>`;
+}
+// 위 정보줄에 들어가는 짧은 바람 표기 (한 성분이면 풀어서, 두 성분이면 맞/순·좌/우로 줄여서)
+function shortWind(w){
+  const hx = Math.abs(w.x) >= 0.05, hz = Math.abs(w.z) >= 0.05;
+  if (!hx && !hz) return '바람 없음';
+  if (hx && !hz) return `${w.x < 0 ? '맞바람' : '순풍'} ${fmt(Math.abs(w.x))}`;
+  if (hz && !hx) return `${w.z > 0 ? '왼쪽' : '오른쪽'}바람 ${fmt(Math.abs(w.z))}`;
+  return `${w.x < 0 ? '맞' : '순'}${fmt(Math.abs(w.x))} · ${w.z > 0 ? '좌' : '우'}${fmt(Math.abs(w.z))}`;
+}
+function renderWxCard(){
+  if (T3 && !$('v3d').hidden) update3d();
+  const L = S.wx, src = L ? `${(L.time || '').slice(11, 16)} ${L.range ? L.range + ' · ' : ''}${DIR16n(L.dir)}풍 ${fmt(L.v)} m/s${L.gust != null ? ` (돌풍 ${fmt(L.gust)})` : ''}` : '날씨 직접 맞추기';
+  $('wxCard').innerHTML = `${gaugeSVG(S.pressure)}<div class="t"><b>${S.pressure} hPa</b><small>${pClass(S.pressure)}</small></div>${windSVG(S.w)}<div class="t" style="flex:1"><b>${shortWind(S.w)}</b><small>${src}</small></div>`;
+}
+
+// ---------- 단계 전환 ----------
+function setStep(n){
+  S.step = n; finalView = false; saveS();
+  document.querySelectorAll('#steps span').forEach(sp => { const k = +sp.dataset.s; sp.className = k === n ? 'on' : k < n ? 'done' : ''; });
+  $('pAim').hidden = n !== 2; $('pCheck').hidden = n !== 3;
+  if (n === 2) syncSliders();
+  if (n === 3) renderCheck();
+  renderWxCard(); requestAnimationFrame(draw);
+}
+function syncSliders(){
+  $('sP').value = S.pressure; $('oP').textContent = `${S.pressure} hPa`;
+  $('sZ').value = -S.w.z; $('oZ').textContent = Math.abs(S.w.z) < 0.05 ? '0' : `${S.w.z > 0 ? '왼쪽' : '오른쪽'} ${fmt(Math.abs(S.w.z))}`;
+  $('sX').value = S.w.x; $('oX').textContent = Math.abs(S.w.x) < 0.05 ? '0' : `${S.w.x < 0 ? '맞' : '순'} ${fmt(Math.abs(S.w.x))}`;
+  $('aimWords').textContent = aimWords(aim());
+}
+function onSlide(){
+  S.pressure = +$('sP').value;
+  saveS(); syncSliders(); renderWxCard(); draw();
+}
+$('wind0').onclick = () => { S.w = { x: 0, z: 0 }; saveS(); syncSliders(); renderWxCard(); draw(); };
+$('guideBtn').onclick = () => { guide = !guide; try { localStorage.setItem('gukgung3-guide', guide ? '1' : '0'); } catch (e) {} $('guideBtn').style.opacity = guide ? 1 : 0.4; draw(); };
+
+
+// ---------- 과녁 상하좌우 바람 버튼 ----------
+// ▲ 표를 위로 = 맞바람 늘리기, ▼ 아래로 = 뒷바람, ◀ 왼쪽으로 = 왼쪽에서 부는 바람, ▶ 오른쪽으로 = 오른쪽에서 부는 바람
+const NUDGE = 0.2;
+function nudge(k, d){
+  const w = { ...S.w }; w[k] = +clamp(w[k] + d * NUDGE, -8, 8).toFixed(1); if (Math.abs(w[k]) < 0.05) w[k] = 0;
+  S.w = w; saveS(); syncSliders(); renderWxCard(); draw();
+}
+function placeNudges(){
+  const show = S.step === 2 && $('vPers').hidden;
+  ['nU', 'nD', 'nL', 'nR', 'pDn', 'pUp'].forEach(id => $(id).hidden = !show);
+  if (!show || !view) return;
+  // 실제 화면에서 위 카드·아래 판의 자리를 재서, 버튼이 슬라이더 판이나 날씨 카드를 덮지 않게 그 사이에만 둔다
+  const st = cv.getBoundingClientRect(), w = st.width;
+  const top = 8;
+  const panTop = $('pAim').getBoundingClientRect().top - st.top - 8;
+  const BH = 50, midY = top + (panTop - top) / 2 - BH / 2;
+  const by = Math.max(top + BH + 6, panTop - BH);   // 아래 줄 (뒷바람·기압풍)
+  $('nU').style.cssText = `left:${w / 2 - 26}px;top:${top}px`;
+  $('nD').style.cssText = `left:${w / 2 - 26}px;top:${by}px`;
+  $('nL').style.cssText = `left:8px;top:${Math.max(top, midY)}px`;
+  $('nR').style.cssText = `right:8px;top:${Math.max(top, midY)}px`;
+  $('pDn').style.cssText = `right:8px;top:${by}px`;
+  $('pUp').style.cssText = `right:62px;top:${by}px`;
+  const ex = excess(S.pressure);
+  $('pDnv').textContent = ex > 0 ? `+${ex}` : ''; $('pUpv').textContent = ex < 0 ? `${ex}` : '';
+  const v = S.w;
+  $('nUv').textContent = v.x < -0.05 ? fmt(-v.x) : ''; $('nDv').textContent = v.x > 0.05 ? fmt(v.x) : '';
+  $('nLv').textContent = v.z > 0.05 ? fmt(v.z) : ''; $('nRv').textContent = v.z < -0.05 ? fmt(-v.z) : '';
+}
+['nU', 'nD', 'nL', 'nR'].forEach(id => {
+  const b = $(id); let t1 = null, t2 = null;
+  const stop = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; };
+  b.addEventListener('pointerdown', e => { e.preventDefault(); stop(); nudge(b.dataset.k, +b.dataset.d); t1 = setTimeout(() => { t2 = setInterval(() => nudge(b.dataset.k, +b.dataset.d), 110); }, 420); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+});
+
+
+// 기압풍 버튼: 누르는 바람(고기압 쪽, 표가 위로) / 올리는 바람(저기압 쪽, 표가 아래로)
+// 평기압(1007~1019)은 표가 움직이지 않는 구간이라 한 번에 건너뛰고, 반대쪽에서 들어올 때는 평기압(1013)에서 한 번 멈춘다
+function pStep(p, up){
+  if (up) return p >= P_HI ? p + 1 : p >= P_LO ? P_HI + 1 : p + 1 >= P_LO ? 1013 : p + 1;
+  return p <= P_LO ? p - 1 : p <= P_HI ? P_LO - 1 : p - 1 <= P_HI ? 1013 : p - 1;
+}
+function pNudge(up){ S.pressure = clamp(pStep(S.pressure, up), 960, 1050); saveS(); syncSliders(); renderWxCard(); draw(); }
+[['pDn', true], ['pUp', false]].forEach(([id, up]) => {
+  const b = $(id); let t1 = null, t2 = null;
+  const stop = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; };
+  b.addEventListener('pointerdown', e => { e.preventDefault(); stop(); pNudge(up); t1 = setTimeout(() => { t2 = setInterval(() => pNudge(up), 140); }, 420); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+});
+
+// ---------- ③ 설정한 표로 바로 쏘고 확인 ----------
+// 설정이 맞다면 오늘 표로 쏜 화살은 홍심 한가운데에 떨어진다 → 벗어난 만큼이 간격(개인 기준) 오차
+const expected = () => ({ z: 0, y: CY });
+let proposal = null, finalView = false;
+function renderCheck(){
+  const n = S.shots.length, b = $('chkBody');
+  if (!n) {
+    b.innerHTML = `<div class="big">오늘 표에 겨냥해 쏘세요</div>
+      <div class="hint">빨간 <b>오늘 표</b>를 겨냥해 쏜 뒤, <b>화살이 떨어진 자리</b>를 과녁 그림에서 누르세요. 설정이 맞다면 홍심 한가운데(파란 점선 원)에 떨어집니다.</div>
+      <div class="row" style="margin-top:8px"><button class="btn" id="back2">← 표잡기</button><span class="grow"></span><button class="btn" id="chkMiss">과녁을 벗어남</button></div>`;
+    $('back2').onclick = () => setStep(2);
+    $('chkMiss').onclick = () => toast('과녁 밖이라도 그림에서 떨어진 쪽을 대략 눌러 주세요 (화면 밖 여백도 눌립니다)');
+    proposal = null; return;
+  }
+  const avg = { z: S.shots.reduce((t, p) => t + p.z, 0) / n, y: S.shots.reduce((t, p) => t + p.y, 0) / n };
+  const ex = expected(), dz = avg.z - ex.z, dy = avg.y - ex.y;
+  const okZ = Math.abs(dz) <= 0.15, okY = Math.abs(dy) <= 0.2;
+  proposal = [];
+  // 좌우: 벗어난 만큼 표를 더(덜) 옮겼어야 했다 → (설정한 이동 + 벗어난 거리) ÷ 옆바람 = 맞는 좌우 간격
+  if (!okZ && Math.abs(S.w.z) >= 0.5) { const k = clamp((P.kw * S.w.z + dz) / S.w.z, 0.05, 0.50); if (Math.abs(k - P.kw) >= 0.01) proposal.push({ key: 'kw', name: '좌우 간격', from: cm(P.kw), to: cm(k), v: k }); }
+  else if (!okZ) { const v = clamp((P.baseZ || 0) - dz, -1, 1); proposal.push({ key: 'baseZ', name: '기준표 좌우', from: cm(P.baseZ || 0), to: cm(v), v, unit: 'cm (+오른쪽)' }); }
+  // 위아래: 앞뒤 바람이 있으면 앞뒤 간격, 없으면 기압 간격, 평기압·무풍이면 상하 기준
+  if (!okY) {
+    if (Math.abs(S.w.x) >= 0.5) { const need = -P.kx * S.w.x - dy, k = clamp(-need / S.w.x, 0.05, 0.50); if (Math.abs(k - P.kx) >= 0.01) proposal.push({ key: 'kx', name: '앞뒤 간격', from: cm(P.kx), to: cm(k), v: k }); }
+    else if (excess(S.pressure) !== 0) { const e = excess(S.pressure), k = clamp((pShift() - dy) / e, 0.01, 0.60); const kr = Math.max(1, Math.round(k * 100)) / 100; proposal.push({ key: e < 0 ? 'perHpaLo' : 'perHpa', name: e < 0 ? '저기압 간격' : '고기압 간격', from: Math.round(P.perHpa * 100), to: Math.round(kr * 100), v: kr, unit: 'cm/hPa' }); }
+    else proposal.push({ key: 'baseY', name: '상하 기준', from: cm(P.baseY), to: cm(clamp(P.baseY - dy, 0, 4.2)), v: clamp(P.baseY - dy, 0, 4.2), unit: 'cm(바닥에서)' });
+  }
+  const dirZ = Math.abs(dz) < 0.02 ? '' : `${dz > 0 ? '오른쪽' : '왼쪽'}으로 ${cm(Math.abs(dz))} cm`, dirY = Math.abs(dy) < 0.02 ? '' : `${dy > 0 ? '위' : '아래'}로 ${cm(Math.abs(dy))} cm`;
+  const good = okZ && okY;
+  b.innerHTML = `<div class="res ${good ? 'ok' : 'bad'}"><div class="big">${good ? '✓ 설정과 일치합니다' : '설정과 차이가 있습니다'}</div>
+      <div class="hint">${n}발 평균이 홍심 한가운데보다 ${[dirZ, dirY].filter(Boolean).join(', ') || '거의 같은 자리'}${good ? ' — 오늘 표 그대로 쓰셔도 됩니다.' : ' 떨어졌습니다.'}${Math.abs(S.w.z) < 0.5 && !okZ ? '<br>옆바람이 거의 없어 좌우 차이는 기준표 좌우로 맞춥니다.' : ''}</div></div>
+    ${proposal.length ? `<div class="hint" style="font-weight:700;color:var(--ink)">개인 기준을 맞출까요?</div>${proposal.map((p, i) => `<label class="chk"><input type="checkbox" data-i="${i}" checked><span>${p.name} <b>${p.from} → ${p.to}</b> ${p.unit || 'cm/(m/s)'}</span></label>`).join('')}` : ''}
+    ${n === 1 && !good ? '<div class="hint">한 발은 오차가 클 수 있습니다. 한 발 더 쏘면 평균으로 다시 봅니다.</div>' : ''}
+    <div class="row" style="margin-top:8px"><button class="btn" id="undoShot">↶ 되돌리기</button><span class="grow"></span>${proposal.length ? '<button class="btn red" id="applyP">예, 맞추기</button>' : ''}<button class="btn ${proposal.length ? '' : 'pri'}" id="doneChk">${good ? '완료' : '그대로 두기'}</button></div>`;
+  $('undoShot').onclick = () => { S.shots.pop(); saveS(); renderCheck(); draw(); };
+  $('doneChk').onclick = () => finish(false);
+  if ($('applyP')) $('applyP').onclick = () => {
+    const pick = [...b.querySelectorAll('.chk input')].filter(x => x.checked).map(x => proposal[+x.dataset.i]);
+    pick.forEach(p => { P[p.key] = p.v; }); saveP();
+    toast(pick.length ? `개인 기준을 맞췄습니다: ${pick.map(p => `${p.name} ${p.to}`).join(' · ')}` : '바꾼 것이 없습니다');
+    finish(true);
+  };
+}
+function finish(changed){
+  finalView = true; const a = aim();
+  $('chkBody').innerHTML = `<div class="big">오늘 표</div><div class="hint" style="font-size:14px;color:var(--ink)"><b>${aimWords(a)}</b></div>
+    <div class="hint">${changed ? '바뀐 개인 기준으로 표를 다시 옮겼습니다. 같은 자리에 한 발 더 쏘아 맞는지 보셔도 됩니다.' : '이 표로 습사하세요. 바람이 바뀌면 ② 표잡기에서 슬라이더만 옮기면 됩니다.'}</div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="again3">한 번 더 확인</button><span class="grow"></span><button class="btn pri" id="back2b">② 표잡기로</button></div>`;
+  $('again3').onclick = () => { finalView = false; S.shots = []; saveS(); renderCheck(); draw(); };
+  $('back2b').onclick = () => setStep(2);
+  S.shots = []; saveS(); draw();
+}
+
+// ---------- 간단 습사: 맞은 자리를 길게 눌러 기록 → 한쪽으로 몰리면 개인 기준 보정 제안 ----------
+// 각 화살은 쏠 때의 표·바람·기압을 함께 저장한다 (설정대로라면 홍심 한가운데에 떨어졌어야 함)
+function drawHits(g, X, Y){
+  const H = (S.hits || []).slice(-12); if (!H.length) return;
+  H.forEach((p, i) => { g.fillStyle = p.used ? 'rgba(120,120,120,.45)' : 'rgba(18,61,138,.9)'; g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.beginPath(); g.arc(X(p.z), Y(p.y), 7, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = '#fff'; g.font = '800 9px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText((S.hits.length - H.length) + i + 1, X(p.z), Y(p.y) + 0.5); });
+  const Hn = H.filter(p => !p.used);
+  if (Hn.length >= 2) { const m = hitAvg(Hn), x = X(m.z), y = Y(m.y); g.strokeStyle = '#123d8a'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y - 9); g.lineTo(x + 9, y); g.lineTo(x, y + 9); g.lineTo(x - 9, y); g.closePath(); g.stroke(); }
+}
+const hitAvg = H => ({ z: H.reduce((s, p) => s + p.z, 0) / H.length, y: H.reduce((s, p) => s + p.y, 0) / H.length });
+function hitProposal(){
+  const H = (S.hits || []).filter(p => !p.used); if (H.length < 3) return null;
+  const n = H.length, dz = H.map(p => p.z), dy = H.map(p => p.y - CY), mz = dz.reduce((a, b) => a + b, 0) / n, my = dy.reduce((a, b) => a + b, 0) / n;
+  const same = (arr, m) => arr.filter(v => Math.sign(v) === Math.sign(m)).length >= Math.ceil(n * 2 / 3);   // 2/3 이상이 같은 쪽
+  const out = [];
+  if (Math.abs(mz) >= 0.15 && same(dz, mz)) {
+    const side = H.filter(p => Math.abs(p.w.z) >= 0.5);
+    if (side.length >= Math.ceil(n / 2)) { const k = clamp(side.reduce((s, p) => s + (p.kw * p.w.z + p.z) / p.w.z, 0) / side.length, 0.05, 0.5); if (Math.abs(k - P.kw) >= 0.01) out.push({ key: 'kw', name: '좌우 간격', from: cm(P.kw), to: cm(k), v: k, unit: 'cm/(m/s)' }); }
+    else { const v = clamp((P.baseZ || 0) - mz, -1, 1); out.push({ key: 'baseZ', name: '기준 좌우', from: cm(P.baseZ || 0), to: cm(v), v, unit: 'cm (+오른쪽)' }); }
+  }
+  if (Math.abs(my) >= 0.2 && same(dy, my)) {
+    const fb = H.filter(p => Math.abs(p.w.x) >= 0.5), pr = H.filter(p => excess(p.p) !== 0);
+    if (fb.length >= Math.ceil(n / 2)) { const k = clamp(fb.reduce((s, p) => s + (p.kx * p.w.x + (p.y - CY)) / p.w.x, 0) / fb.length, 0.05, 0.5); if (Math.abs(k - P.kx) >= 0.01) out.push({ key: 'kx', name: '앞뒤 간격', from: cm(P.kx), to: cm(k), v: k, unit: 'cm/(m/s)' }); }
+    else if (pr.length >= Math.ceil(n / 2)) {
+      const lo = pr.filter(p => excess(p.p) < 0).length > pr.length / 2, grp = pr.filter(p => (excess(p.p) < 0) === lo), key = lo ? 'perHpaLo' : 'perHpa';
+      const k = clamp(grp.reduce((s, p) => s + (perOf(excess(p.p), p) * excess(p.p) - (p.y - CY)) / excess(p.p), 0) / grp.length, 0.01, 0.6), kr = Math.max(1, Math.round(k * 100)) / 100;
+      out.push({ key, name: lo ? '저기압 간격' : '고기압 간격', from: Math.round(perOf(lo ? -1 : 1) * 100), to: Math.round(kr * 100), v: kr, unit: 'cm/hPa' });
+    }
+    else { const v = clamp(P.baseY - my, 0, 4.2); out.push({ key: 'baseY', name: '상하 기준', from: cm(P.baseY), to: cm(v), v, unit: 'cm' }); }
+  }
+  return out.length ? { n, mz, my, items: out, sig: H.length + ':' + H[H.length - 1].t } : null;
+}
+let hitNo = null;
+function renderHits(){
+  const H = S.hits || [], Hn = H.filter(p => !p.used), nu = H.length - Hn.length;
+  $('hitRow').innerHTML = H.length
+    ? `<span class="grow">🎯 화살 <b>${Hn.length}발</b>${Hn.length >= 2 ? ` · 평균 ${hitWords(hitAvg(Hn))}` : ''}${nu ? ` <span style="color:var(--ink2)">(보정 반영 ${nu}발)</span>` : ''}</span><button class="btn" id="hitUndo">↶</button><button class="btn" id="hitClr">지우기</button>`
+    : '<span class="grow">맞은 자리를 <b>길게 누르면</b> 화살이 기록됩니다</span>';
+  if (H.length) { $('hitUndo').onclick = () => { S.hits.pop(); saveS(); renderHits(); draw(); }; $('hitClr').onclick = () => { S.hits = []; saveS(); renderHits(); draw(); }; }
+  const pr = hitProposal(), box = $('hitAsk');
+  if (!pr || hitNo === pr.sig || S.step !== 2) { box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = `<div class="t">화살이 한쪽으로 몰립니다</div>
+    <div class="s">${pr.n}발 평균이 홍심 한가운데에서 ${hitWords({ z: pr.mz, y: CY + pr.my })} 벗어났습니다. 개인 기준을 맞출까요?<br>${pr.items.map(i => `${i.name} <b>${i.from} → ${i.to}</b> ${i.unit}`).join('<br>')}</div>
+    <div class="row"><button class="btn red grow" id="hitYes">예, 맞추기</button><button class="btn grow" id="hitNoB">아니오</button></div>`;
+  $('hitYes').onclick = () => { pr.items.forEach(i => { P[i.key] = i.v; }); saveP(); (S.hits || []).forEach(p => p.used = true); saveS(); syncSliders(); renderHits(); draw(); toast('개인 기준을 맞췄습니다. 이후 화살로 다시 확인합니다'); };
+  $('hitNoB').onclick = () => { hitNo = pr.sig; box.hidden = true; };
+}
+function hitWords(m){
+  const dz = m.z, dy = m.y - CY, p = [];
+  if (Math.abs(dz) >= 0.02) p.push(`${dz > 0 ? '오른쪽' : '왼쪽'} ${cm(Math.abs(dz))} cm`);
+  if (Math.abs(dy) >= 0.02) p.push(`${dy > 0 ? '위' : '아래'} ${cm(Math.abs(dy))} cm`);
+  return p.length ? p.join(', ') : '홍심 한가운데';
+}
+// 길게 누르기 (0.45초, 손가락을 거의 움직이지 않을 때만)
+let lp = null;
+cv.addEventListener('pointerdown', e => {
+  if (S.step !== 2 || !$('vPers').hidden) return;
+  const x0 = e.clientX, y0 = e.clientY;
+  lp = { x0, y0, timer: setTimeout(() => {
+    if (!lp || !view) return;
+    const r = cv.getBoundingClientRect(), q = view.inv(x0 - r.left, y0 - r.top), a = aim();
+    S.hits = S.hits || [];
+    S.hits.push({ z: +q.z.toFixed(3), y: +q.y.toFixed(3), aim: a, w: { ...S.w }, p: S.pressure, kw: P.kw, kx: P.kx, perHpa: P.perHpa, perHpaLo: perOf(-1), t: Date.now() });
+    saveS(); try { navigator.vibrate && navigator.vibrate(25); } catch (er) {}
+    renderHits(); draw(); lp = null;
+  }, 450) };
+});
+['pointermove'].forEach(ev => cv.addEventListener(ev, e => { if (lp && Math.hypot(e.clientX - lp.x0, e.clientY - lp.y0) > 10) { clearTimeout(lp.timer); lp = null; } }));
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => cv.addEventListener(ev, () => { if (lp) { clearTimeout(lp.timer); lp = null; } }));
+cv.addEventListener('contextmenu', e => e.preventDefault());
+// iOS: 과녁을 길게 누를 때 확대경·복사 메뉴가 뜨지 않도록 터치 기본 동작을 막는다 (포인터 이벤트는 그대로)
+cv.addEventListener('touchstart', e => { if (e.touches.length === 1) e.preventDefault(); }, { passive: false });
+document.addEventListener('selectstart', e => { if (!e.target.closest || !e.target.closest('input,textarea')) e.preventDefault(); });
+
+
+// 화살 떨어진 자리 찍기 (손가락을 거의 움직이지 않고 톡 친 경우만)
+let tap = null;
+cv.addEventListener('pointerdown', e => { tap = { x: e.clientX, y: e.clientY, t: Date.now() }; });
+cv.addEventListener('pointerup', e => {
+  const t = tap; tap = null; if (!t || S.step !== 3 || !view) return;
+  if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 10 || Date.now() - t.t > 700) return;
+  if (!$('chkBody').querySelector('#undoShot') && S.shots.length) return;
+  if (finalView) return;
+  const r = cv.getBoundingClientRect(), q = view.inv(e.clientX - r.left, e.clientY - r.top);
+  S.shots.push({ z: +q.z.toFixed(3), y: +q.y.toFixed(3) }); saveS(); renderCheck(); draw();
+});
+
+// ---------- 개인 기준 ----------
+function renderPers(){
+  $('kB').value = P.baseY; $('oB').textContent = `${cm(P.baseY)} cm`;
+  $('kBZ').value = P.baseZ || 0; $('oBZ').textContent = Math.abs(P.baseZ || 0) < 0.005 ? '가운데' : `${P.baseZ > 0 ? '오른쪽' : '왼쪽'} ${cm(Math.abs(P.baseZ))} cm`;
+  $('kP').value = Math.round(P.perHpa * 100); $('oKP').textContent = `${Math.round(P.perHpa * 100)} cm`;
+  $('kPL').value = Math.round(perOf(-1) * 100); $('oKPL').textContent = `${Math.round(perOf(-1) * 100)} cm`;
+  $('kZ').value = cm(P.kw); $('oKZ').textContent = `${cm(P.kw)} cm`;
+  $('kX').value = cm(P.kx); $('oKX').textContent = `${cm(P.kx)} cm`;
+}
+['kB', 'kBZ', 'kP', 'kPL', 'kZ', 'kX'].forEach(id => $(id).addEventListener('input', () => {
+  P.baseY = +$('kB').value;
+  P.baseZ = Math.abs(+$('kBZ').value) < 0.03 ? 0 : +$('kBZ').value;   // 가운데 ±3 cm는 0에 붙인다
+  P.perHpa = Math.round(+$('kP').value) / 100; P.perHpaLo = Math.round(+$('kPL').value) / 100; P.kw = +$('kZ').value / 100; P.kx = +$('kX').value / 100;
+  saveP(); renderPers(); if (S.step === 2) { syncSliders(); renderHits(); } if (S.step === 3 && S.shots.length) renderCheck(); draw();
+}));
+
+// 기준 좌우 미세 조정: 1 cm씩 / 가운데로
+function setBZ(v){ P.baseZ = Math.round(clamp(v, -1, 1) * 100) / 100; saveP(); renderPers(); draw(); }
+$('bzL').onclick = () => setBZ((P.baseZ || 0) - 0.01);
+$('bzR').onclick = () => setBZ((P.baseZ || 0) + 0.01);
+$('bz0').onclick = () => setBZ(0);
+$('persBtn').onclick = () => { renderPers(); $('vPers').hidden = false; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = 'hidden'); placeNudges(); draw(); };
+function closePers(){ $('vPers').hidden = true; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = ''); draw(); }
+$('persClose').onclick = closePers;
+
+$('persFactory').onclick = () => { P = { ...DEF }; saveP(); renderPers(); syncSliders(); draw(); toast('초기값으로 돌렸습니다'); };
+$('persFix').onclick = () => { DEF = { ...P }; store('gukgung3-def', DEF); toast(`지금 기준을 초기값으로 고정했습니다 (상하 ${cm(P.baseY)} · 좌우 ${cm(P.baseZ || 0)} · 고기압 ${Math.round(P.perHpa * 100)} · 저기압 ${Math.round(perOf(-1) * 100)} · 좌우바람 ${cm(P.kw)} · 앞뒤바람 ${cm(P.kx)} cm)`); };
+$('resetToday').onclick = () => { S = TODAY0(); saveS(); closePers(); setStep(2); renderHits(); toast('오늘 값만 지웠습니다 (개인 기준은 그대로)'); };
+
+// ---------- 날씨 (GPS → Open-Meteo) ----------
+const DIR16 = ['북', '북북동', '북동', '동북동', '동', '동남동', '남동', '남남동', '남', '남남서', '남서', '서남서', '서', '서북서', '북서', '북북서'];
+const DIR16n = d => d == null ? '' : DIR16[Math.round(((d % 360) + 360) % 360 / 22.5) % 16];
+const ranges = () => { try { return JSON.parse(localStorage.getItem('gukgung-ranges') || '[]'); } catch (e) { return []; } };
+const saveRanges = a => store('gukgung-ranges', a);
+const km = (a, b) => { const r = Math.PI / 180, dA = (b.lat - a.lat) * r, dO = (b.lon - a.lon) * r, h = Math.sin(dA / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dO / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); };
+const nearRange = pos => ranges().filter(g => km(pos, g) < 1.5).sort((a, b) => km(pos, a) - km(pos, b))[0] || null;
+function getPos(){ return new Promise((res, rej) => { if (!navigator.geolocation) return rej({ code: 0 }); navigator.geolocation.getCurrentPosition(p => res({ lat: p.coords.latitude, lon: p.coords.longitude }), rej, { enableHighAccuracy: true, timeout: 12000, maximumAge: 120000 }); }); }
+async function fetchWx(pos){
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), 12000);
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.lat.toFixed(4)}&longitude=${pos.lon.toFixed(4)}&current=pressure_msl,temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms&timezone=auto`, { signal: ac.signal, cache: 'no-store' });
+    const c = (await r.json()).current; if (!c || c.pressure_msl == null) throw 0;
+    return { time: c.time, p: c.pressure_msl, t: c.temperature_2m, v: c.wind_speed_10m, dir: c.wind_direction_10m, gust: c.wind_gusts_10m };
+  } finally { clearTimeout(t); }
+}
+function applyWx(wx, rg){
+  const phi = (wx.dir - rg.bearing) * Math.PI / 180;   // 풍향(불어오는 쪽) − 과녁 방향
+  S.pressure = clamp(Math.round(wx.p), 960, 1050); S.tempC = Math.round(wx.t ?? 15);
+  S.w = { x: +clamp(-wx.v * Math.cos(phi), -8, 8).toFixed(1), z: +clamp(-wx.v * Math.sin(phi), -8, 8).toFixed(1) };
+  S.wx = { ...wx, range: rg.name }; S.range = rg.id; saveS();
+  const all = ranges(), it = all.find(g => g.id === rg.id); if (it) { it.used = Date.now(); saveRanges(all); }
+  ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true);
+  setStep(2);
+  toast(`${rg.name}: ${S.pressure} hPa · ${windWords(S.w)} 를 넣었습니다`);
+}
+let pend = null;
+async function readWx(){
+  $('startMsg').textContent = '📍 위치를 확인하는 중…'; $('startYes').disabled = true;
+  try {
+    let pos;
+    try { pos = await getPos(); }
+    catch (e) {
+      const last = ranges().sort((a, b) => (b.used || 0) - (a.used || 0))[0];
+      if (!last) { showLoc(e && e.code === 1); return; }
+      pos = { lat: last.lat, lon: last.lon };
+    }
+    $('startMsg').textContent = '⛅ 날씨를 불러오는 중…';
+    await gotPos(pos, '');
+  } catch (e) { $('startMsg').innerHTML = '<span class="err">날씨를 불러오지 못했습니다. 인터넷 연결을 확인하거나 아니오를 눌러 직접 맞추세요.</span>'; $('vStart').hidden = false; }
+  finally { $('startYes').disabled = false; }
+}
+async function gotPos(pos, name){
+  const wx = await fetchWx(pos), rg = nearRange(pos);
+  if (rg) return applyWx(wx, rg);
+  pend = { wx, pos }; openDir(name);
+}
+function showLoc(denied){
+  const inFrame = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  $('locTitle').textContent = denied ? '위치 권한이 꺼져 있습니다' : '위치를 확인하지 못했습니다';
+  $('locSteps').innerHTML = inFrame ? '지금 화면은 <b>Claude 대화 속 미리보기</b>라 위치를 쓸 수 없습니다. 홈 화면 앱에서 쓰거나, 아래에 동네 이름을 넣어 주세요.'
+    : `웹 앱은 휴대폰 설정 화면을 바로 열 수 없어, 아래 순서로 켜 주세요.<ol style="padding-left:18px;margin:6px 0">${ios ? '<li>설정 → 개인정보 보호 및 보안 → 위치 서비스 켜기</li><li>같은 화면의 Safari 웹 사이트 → 앱을 사용하는 동안</li>' : '<li>설정 → 위치 켜기</li><li>Chrome 주소창 자물쇠 → 권한 → 위치 허용</li>'}<li>돌아와서 위치 다시 시도</li></ol>또는 동네 이름으로 찾아도 됩니다.`;
+  $('locHits').innerHTML = ''; $('vStart').hidden = true; $('vLoc').hidden = false;
+}
+$('locFind').onclick = async () => {
+  const q = $('locQ').value.trim().split(/\s+/).pop(); if (!q) return;
+  $('locHits').innerHTML = '<div class="hint">찾는 중…</div>';
+  try {
+    const j = await (await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=ko&countryCode=KR&format=json`, { cache: 'no-store' })).json();
+    const hs = j.results || [];
+    if (!hs.length) { $('locHits').innerHTML = '<div class="hint">찾지 못했습니다. 동·읍·면 이름 하나만 넣어 보세요.</div>'; return; }
+    $('locHits').innerHTML = hs.map((h, i) => `<button class="btn" data-i="${i}">${[h.name, h.admin2, h.admin1].filter(Boolean).join(' · ')}</button>`).join('');
+    $('locHits').querySelectorAll('button').forEach(b => b.onclick = async () => { const h = hs[+b.dataset.i]; b.disabled = true; try { await gotPos({ lat: h.latitude, lon: h.longitude }, h.name); } catch (e) { $('locHits').innerHTML = '<div class="hint err">날씨를 불러오지 못했습니다.</div>'; } });
+  } catch (e) { $('locHits').innerHTML = '<div class="hint err">검색하지 못했습니다. 인터넷 연결을 확인하거나 직접 맞추기를 누르세요.</div>'; }
+};
+$('locRetry').onclick = () => { $('vLoc').hidden = true; $('vStart').hidden = false; readWx(); };
+$('locManual').onclick = () => { $('vLoc').hidden = true; manual(); };
+// 활터 방향
+let dirSel = null, cmpOn = false, cmpDeg = null;
+function openDir(name){
+  dirSel = null; $('rgName').value = name || ''; renderDir(); $('cmpVal').textContent = '';
+  ['vStart', 'vLoc'].forEach(id => $(id).hidden = true); $('vDir').hidden = false;
+}
+function renderDir(){
+  $('dir16').innerHTML = DIR16.map((n, i) => `<button data-d="${i * 22.5}" class="${dirSel != null && Math.round(dirSel / 22.5) % 16 === i ? 'on' : ''}">${n}</button>`).join('');
+  $('dir16').querySelectorAll('button').forEach(b => b.onclick = () => { dirSel = +b.dataset.d; renderDir(); });
+  $('dirSave').disabled = dirSel == null;
+}
+function onOri(e){ const h = e.webkitCompassHeading != null ? e.webkitCompassHeading : (e.absolute && e.alpha != null ? (360 - e.alpha) % 360 : null); if (h == null) return; cmpDeg = h; $('cmpVal').textContent = `지금 ${DIR16n(h)} ${Math.round(h)}° — 과녁 쪽을 향했으면 다시 누르세요`; }
+function stopCmp(){ cmpOn = false; removeEventListener('deviceorientationabsolute', onOri); removeEventListener('deviceorientation', onOri); $('cmpBtn').textContent = '📱 휴대폰 나침반으로 재기'; }
+$('cmpBtn').onclick = async () => {
+  if (cmpOn) { if (cmpDeg != null) { dirSel = cmpDeg; renderDir(); $('cmpVal').textContent = `과녁 방향 ${DIR16n(dirSel)} ${Math.round(dirSel)}°`; } stopCmp(); return; }
+  try { if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission && (await DeviceOrientationEvent.requestPermission()) !== 'granted') throw 0; }
+  catch (e) { $('cmpVal').textContent = '나침반을 쓸 수 없습니다 — 방위 버튼으로 골라 주세요'; return; }
+  cmpOn = true; cmpDeg = null; addEventListener('deviceorientationabsolute', onOri); addEventListener('deviceorientation', onOri);
+  $('cmpBtn').textContent = '✓ 이 방향으로 정하기'; $('cmpVal').textContent = '휴대폰 윗부분을 과녁 쪽으로 향하세요…';
+};
+$('dirSave').onclick = () => {
+  if (dirSel == null || !pend) return; stopCmp();
+  const all = ranges(), rg = { id: Date.now().toString(36), name: $('rgName').value.trim() || `활터 ${all.length + 1}`, lat: pend.pos.lat, lon: pend.pos.lon, bearing: dirSel, used: Date.now() };
+  all.push(rg); saveRanges(all); applyWx(pend.wx, rg);
+};
+$('dirCancel').onclick = () => { stopCmp(); $('vDir').hidden = true; manual(); };
+function manual(){ S.wx = null; saveS(); ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true); setStep(2); }
+$('startYes').onclick = readWx;
+$('startNo').onclick = () => { $('vStart').hidden = true; };
+$('wxBtn').onclick = () => { $('startMsg').textContent = ''; $('vStart').hidden = false; };
+
+
+// ---------- 바람 3D 보기 (v2 환경 화면을 옮겨 옴 · three.js는 처음 누를 때만 불러온다) ----------
+// 좌표: 사대 x=0 → 과녁 x=145(사로 방향), y = 위, z = 오른쪽
+let T3 = null;
+const D3 = 145, TILT3 = 15 * Math.PI / 180, COS3 = Math.cos(TILT3), SIN3 = Math.sin(TILT3);
+const f2w = (y, z) => ({ x: D3 + y * SIN3, y: y * COS3, z });   // 과녁 그림 좌표 → 세계 좌표 (뒤로 기운 판)
+function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+async function open3d(){
+  $('v3d').hidden = false; $('m3d').hidden = false; $('m3d').textContent = '3D 화면을 불러오는 중…';
+  try {
+    if (!window.THREE) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
+    if (!THREE.OrbitControls) await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js');
+  } catch (e) { $('m3d').textContent = '3D 화면을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.'; return; }
+  $('m3d').hidden = true;
+  if (!T3) { T3 = build3d(); T3.view('side'); }
+  update3d(); T3.running = true; requestAnimationFrame(T3.loop);
+}
+function close3d(){ $('v3d').hidden = true; if (T3) T3.running = false; }
+$('b3d').onclick = open3d; $('c3d').onclick = close3d;
+document.querySelectorAll('#v3d .viewbar [data-v]').forEach(b => b.onclick = () => T3 && T3.view(b.dataset.v));
+
+function build3d(){
+  const host = $('w3d');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.shadowMap.enabled = true;
+  host.appendChild(renderer.domElement);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0xcfdde6); scene.fog = new THREE.Fog(0xcfdde6, 180, 520);
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 2000);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.08;
+  scene.add(new THREE.HemisphereLight(0xf2f6ff, 0x6b7a4a, 0.75));
+  const sun = new THREE.DirectionalLight(0xfff3dc, 0.85); sun.position.set(40, 80, 50); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04;
+  Object.assign(sun.shadow.camera, { left: -100, right: 100, top: 60, bottom: -60, near: 1, far: 300 });
+  sun.shadow.camera.updateProjectionMatrix(); sun.target.position.set(75, 0, 0); scene.add(sun, sun.target);
+  const L = (m, c) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, m || {}));
+
+  // 글자 표지판
+  function label(text, color, bg, px){
+    px = px || 34; const c = document.createElement('canvas'), g = c.getContext('2d');
+    const font = `700 ${px}px -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif`;
+    g.font = font; c.width = Math.ceil(g.measureText(text).width) + 24; c.height = px + 18; g.font = font;
+    if (bg) { g.fillStyle = bg; const r = 10, w = c.width, h = c.height; g.beginPath(); g.moveTo(r, 0); g.arcTo(w, 0, w, h, r); g.arcTo(w, h, 0, h, r); g.arcTo(0, h, 0, 0, r); g.arcTo(0, 0, w, 0, r); g.closePath(); g.fill(); }
+    g.fillStyle = color; g.textBaseline = 'middle'; g.fillText(text, 12, c.height / 2 + 1);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+    sp.scale.set(1.6 * c.width / c.height, 1.6, 1); sp.renderOrder = 10; return sp;
+  }
+  function beam(a, b, r, mat){
+    const A = new THREE.Vector3(a.x, a.y, a.z), B = new THREE.Vector3(b.x, b.y, b.z);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, A.distanceTo(B), 8), mat);
+    m.position.copy(A).add(B).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize());
+    m.castShadow = true; return m;
+  }
+  // 지면·사로·거리 표시
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(900, 600), L(null, 0x8ea56b)); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  const lane = new THREE.Mesh(new THREE.PlaneGeometry(D3 + 12, 14), L(null, 0x9db477)); lane.rotation.x = -Math.PI / 2; lane.position.set(D3 / 2, 0.01, 0); lane.receiveShadow = true; scene.add(lane);
+  for (let x = 10; x < D3; x += 10) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.15, x % 50 === 0 ? 3 : 1.2), new THREE.MeshBasicMaterial({ color: 0xf1ead8 }));
+    m.rotation.x = -Math.PI / 2; m.position.set(x, 0.02, -6.2); scene.add(m);
+    if (x % 50 === 0) { const tl = label(`${x} m`, '#3a3a2a', null, 26); tl.position.set(x, 1.2, -6.2); tl.scale.multiplyScalar(0.6); scene.add(tl); }
+  }
+  // 사대: 활을 든 사람 (과녁 쪽 +x를 보고 서서 줌손을 앞으로 뻗고 깍지손을 당긴 모습)
+  (function(){
+    const g = new THREE.Group(), cloth = L(null, 0xf3efe4), pants = L(null, 0x34404f), skin = L(null, 0xe2b48c), dark = L(null, 0x2a2420);
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.12, 3.2), L(null, 0xbfb39c)); pad.position.y = 0.06; pad.receiveShadow = true; g.add(pad);
+    // 다리 (어깨너비로 벌려 섬)
+    [-0.16, 0.16].forEach(z => { const leg = beam({ x: 0, y: 0.12, z: z * 1.4 }, { x: 0, y: 0.95, z }, 0.085, pants); g.add(leg); });
+    // 몸통·두루마기
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.75, 14), cloth); body.position.y = 1.32; body.castShadow = true; g.add(body);
+    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.36, 0.45, 14), cloth); skirt.position.y = 0.92; skirt.castShadow = true; g.add(skirt);
+    const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.235, 0.235, 0.06, 14), L(null, 0x7a2e2a)); belt.position.y = 1.1; g.add(belt);
+    // 머리 (과녁 쪽으로 고개를 돌림)
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), skin); head.position.set(0.02, 1.86, 0); head.castShadow = true; g.add(head);
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.135, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), dark); hair.position.copy(head.position); g.add(hair);
+    // 팔: 줌손(왼팔)은 과녁 쪽으로 쭉, 깍지손(오른팔)은 턱 옆으로 당김
+    const shL = { x: 0, y: 1.6, z: -0.2 }, shR = { x: 0, y: 1.6, z: 0.2 };
+    const handL = { x: 0.66, y: 1.62, z: -0.12 }, elbR = { x: -0.32, y: 1.62, z: 0.3 }, handR = { x: 0.06, y: 1.7, z: 0.06 };
+    g.add(beam(shL, handL, 0.05, cloth)); g.add(beam(shR, elbR, 0.05, cloth)); g.add(beam(elbR, handR, 0.045, cloth));
+    [handL, handR].forEach(h => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), skin); m.position.set(h.x, h.y, h.z); g.add(m); });
+    // 활: 줌통을 쥔 왼손을 지나는 세로 활 (국궁처럼 양 끝이 휘는 모양)
+    const bowPts = [];
+    for (let i = 0; i <= 24; i++) { const s = i / 24 * 2 - 1, y = s * 0.62, x = -0.16 * s * s + 0.05 * Math.pow(s, 6); /* 줌통은 손에, 양 끝은 사람 쪽으로 휘고 끝만 살짝 앞으로 */ bowPts.push(new THREE.Vector3(handL.x + x, handL.y + y, handL.z)); }
+    const bow = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(bowPts), 40, 0.018, 6, false), L(null, 0x5b3a1e)); bow.castShadow = true; g.add(bow);
+    const top = bowPts[0], bot = bowPts[24];
+    const str = new THREE.BufferGeometry().setFromPoints([top, new THREE.Vector3(handR.x, handR.y, handR.z), bot]);
+    g.add(new THREE.Line(str, new THREE.LineBasicMaterial({ color: 0xeeeeee })));
+    // 화살 (깍지손에서 줌손 앞으로)
+    g.add(beam({ x: handR.x, y: handR.y, z: handR.z }, { x: handL.x + 0.22, y: handL.y + 0.02, z: handL.z }, 0.008, L(null, 0xc9b07a)));
+    g.position.set(-0.4, 0, 0); scene.add(g);
+    const nm = label('사대', '#1f1c18', 'rgba(244,239,228,.9)', 30); nm.position.set(-0.4, 2.8, 0); nm.scale.multiplyScalar(0.7); scene.add(nm);
+  })();
+  // 과녁 (뒤로 기운 판) + 받침 + 무겁 + 먼 산
+  const fc = document.createElement('canvas'), FW = 512, FH = Math.round(512 * TH / TW); fc.width = FW; fc.height = FH;
+  { const g = fc.getContext('2d'), s = FW / TW, X = z => FW / 2 + z * s, Y = y => FH - y * s, F = FACE;
+    g.fillStyle = '#f7f5ef'; g.fillRect(0, 0, FW, FH); g.fillStyle = '#211c18';
+    g.fillRect(X(-F.bandHalf), Y(F.bandTop), 2 * F.bandHalf * s, (F.bandTop - F.bandBot) * s);
+    g.fillRect(X(-F.boxHalf), Y(F.boxTop), 2 * F.boxHalf * s, (F.boxTop - F.boxBot) * s);
+    g.fillStyle = '#c8362b'; g.beginPath(); g.arc(X(0), Y(CY), F.r * s, 0, Math.PI * 2); g.fill(); }
+  const woodDark = L(null, 0x4a3626);
+  const tgt = new THREE.Group(); tgt.position.set(D3, 0, 0); tgt.rotation.z = -TILT3; scene.add(tgt);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(TW, TH), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(fc) }));
+  face.rotation.y = -Math.PI / 2; face.position.set(-0.001, TH / 2, 0); tgt.add(face);
+  const board = new THREE.Mesh(new THREE.BoxGeometry(0.16, TH + 0.14, TW + 0.14), woodDark); board.position.set(0.08, TH / 2, 0); board.castShadow = true; tgt.add(board);
+  [-1, 1].forEach(sz => { const tp = f2w(TH * 0.85, sz * (TW / 2 - 0.15)); tp.x += 0.16; scene.add(beam({ x: tp.x + 1.25, y: 0, z: tp.z }, tp, 0.07, woodDark)); });
+  const sill = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.18, TW + 0.8), L(null, 0xa79a83)); sill.position.set(D3 + 0.1, 0.09, 0); sill.receiveShadow = true; scene.add(sill);
+  { const shp = new THREE.Shape(); shp.moveTo(0, 0); shp.lineTo(18, 0); shp.lineTo(18, 5.5); shp.lineTo(7, 5.5); shp.closePath();
+    const geo = new THREE.ExtrudeGeometry(shp, { depth: 50, bevelEnabled: false }); geo.translate(0, 0, -25);
+    const berm = new THREE.Mesh(geo, L(null, 0x7d9258)); berm.position.set(D3 + 2.4, 0, 0); berm.receiveShadow = true; scene.add(berm); }
+  [[330, -120, 70, 90, 0x8aa0a6], [380, 40, 90, 120, 0x93a8ad], [300, 160, 60, 70, 0x8ea3a9], [420, -30, 110, 150, 0x9fb2b6], [260, -200, 50, 60, 0x87a08f]].forEach(([x, z, h, r, c]) => {
+    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), new THREE.MeshLambertMaterial({ color: c, flatShading: true })); m.position.set(x, h / 2 - 2, z); scene.add(m);
+  });
+  // 풍향 자루 4개
+  function makeSock(x, z){
+    const g = new THREE.Group(); g.add(beam({ x: 0, y: 0, z: 0 }, { x: 0, y: 6, z: 0 }, 0.05, L(null, 0x777777)));
+    const yaw = new THREE.Group(); yaw.position.y = 5.9; g.add(yaw); const pitch = new THREE.Group(); yaw.add(pitch);
+    for (let i = 0; i < 5; i++) { const r0 = 0.32 - i * 0.04, r1 = 0.32 - (i + 1) * 0.04;
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, 0.5, 16, 1, true), new THREE.MeshLambertMaterial({ color: i % 2 ? 0xffffff : 0xe2552a, side: THREE.DoubleSide }));
+      m.rotation.z = -Math.PI / 2; m.position.x = 0.5 * (i + 0.5); m.castShadow = true; pitch.add(m); }
+    g.position.set(x, 0, z); scene.add(g); return { yaw, pitch };
+  }
+  const socks = [makeSock(18, 7.5), makeSock(75, 7.5), makeSock(D3 - 5, 7.5), makeSock(D3 - 5, -7.5)];
+  // 흐르는 바람 선
+  const WB = { x0: -15, x1: D3 + 15, y0: 0.4, y1: 24, z0: -24, z1: 24 }, NST = 800, stPos = new Float32Array(NST * 6), seeds = [];
+  for (let i = 0; i < NST; i++) seeds.push({ x: WB.x0 + Math.random() * (WB.x1 - WB.x0), y: WB.y0 + Math.pow(Math.random(), 1.4) * (WB.y1 - WB.y0), z: WB.z0 + Math.random() * (WB.z1 - WB.z0), ph: Math.random() * 6.28, k: 0.7 + Math.random() * 0.6 });
+  const stGeo = new THREE.BufferGeometry(); stGeo.setAttribute('position', new THREE.BufferAttribute(stPos, 3));
+  const stMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false });
+  const streaks = new THREE.LineSegments(stGeo, stMat); streaks.frustumCulled = false; scene.add(streaks);
+  const dyn = new THREE.Group(); scene.add(dyn);
+  const st = { renderer, scene, camera, controls, socks, stMat, stGeo, stPos, seeds, WB, NST, streaks, dyn, label, wind: { x: 0, y: 0, z: 0 }, running: false, last: 0 };
+  function resize(){ const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  new ResizeObserver(resize).observe(host); resize();
+  st.view = v => {
+    document.querySelectorAll('#v3d .viewbar [data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    if (v === 'side') { camera.fov = 40; camera.position.set(72, 14, 105); controls.target.set(72, 6, 0); }
+    if (v === 'archer') { camera.fov = 24; camera.position.set(-3.2, 2.3, -1.1); controls.target.set(D3, 4, 0); }
+    if (v === 'target') { const c = f2w(CY, 0); camera.fov = 40; camera.position.set(D3 - 6.5, 2.0, 2.4); controls.target.set(c.x, c.y, 0); }
+    if (v === 'top') { camera.fov = 40; camera.position.set(D3 / 2, 120, 0.01); controls.target.set(D3 / 2, 0, 0); }
+    camera.updateProjectionMatrix(); controls.update();
+  };
+  st.loop = now => {
+    if (!st.running) return;
+    requestAnimationFrame(st.loop);
+    const tsec = now / 1000, dt = Math.min(0.05, (now - (st.last || now)) / 1000); st.last = now;
+    // 바람 선: 상하 성분은 눈에 보이게 4배 과장
+    const w = st.wind, s3 = Math.hypot(w.x, w.y, w.z);
+    streaks.visible = s3 > 0.03;
+    if (streaks.visible) {
+      const vx = w.x, vy = w.y * 4, vz = w.z, vn = Math.hypot(vx, vy, vz), ux = vx / vn, uy = vy / vn, uz = vz / vn, vis = 1.5 + s3 * 2, len = 1 + s3 * 0.7;
+      const sx = WB.x1 - WB.x0, sy = WB.y1 - WB.y0, sz = WB.z1 - WB.z0;
+      for (let i = 0; i < NST; i++) {
+        const s = seeds[i], v = vis * s.k;
+        s.x += ux * v * dt; s.y += uy * v * dt + Math.sin(tsec * 1.7 + s.ph) * 0.25 * dt; s.z += uz * v * dt;
+        if (s.x > WB.x1) s.x -= sx; if (s.x < WB.x0) s.x += sx; if (s.y > WB.y1) s.y -= sy; if (s.y < WB.y0) s.y += sy; if (s.z > WB.z1) s.z -= sz; if (s.z < WB.z0) s.z += sz;
+        const Lk = len * s.k, o = i * 6;
+        stPos[o] = s.x - ux * Lk; stPos[o + 1] = s.y - uy * Lk; stPos[o + 2] = s.z - uz * Lk; stPos[o + 3] = s.x; stPos[o + 4] = s.y; stPos[o + 5] = s.z;
+      }
+      stGeo.attributes.position.needsUpdate = true;
+    }
+    const wsp = Math.hypot(w.x, w.z);
+    socks.forEach((s, i) => { s.pitch.rotation.z = (s.pitch.userData.droop ?? -1.3) + Math.sin(tsec * (2 + wsp) + i) * (0.04 + wsp * 0.01); s.pitch.rotation.x = Math.sin(tsec * 3.1 + i * 2) * 0.05 * Math.min(1, wsp / 3); });
+    controls.update(); renderer.render(scene, camera);
+  };
+  return st;
+}
+function windColor3(sp){ const a = new THREE.Color(0x3b82c4), b = new THREE.Color(0xe0a12a), c = new THREE.Color(0xd2382c); return sp < 4 ? a.lerp(b, sp / 4) : b.lerp(c, Math.min(1, (sp - 4) / 5)); }
+function windArrow3(sp, color){
+  const g = new THREE.Group(), Lr = 2.5 + sp * 1.6, r = 0.22 + Math.min(sp, 10) * 0.03, mat = new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.35 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, Lr, 12), mat); shaft.rotation.z = -Math.PI / 2; shaft.position.x = -0.6; g.add(shaft);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(r * 2.6, 1.6 + r * 2, 16), mat); head.rotation.z = -Math.PI / 2; head.position.x = Lr / 2 - 0.6 + 0.8 + r; g.add(head);
+  return g;
+}
+function tube3(pts, color, radius, opacity){
+  const geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 160, radius, 8, false);
+  return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity }));
+}
+function onFace3(geo, p, color, off){
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+  const w = f2w(p.y, p.z); m.position.set(w.x - COS3 * off, w.y + SIN3 * off, w.z); m.lookAt(m.position.x - COS3, m.position.y + SIN3, m.position.z); return m;
+}
+// 사대에서 과녁 그림의 한 점까지 날아가는 화살 궤적 (bend: 처음에 겨냥한 쪽으로 휘었다가 바람에 밀려 들어오는 정도)
+function path3(hit, apex, bend){
+  const A = new THREE.Vector3(0.3, 1.65, 0), Bw = f2w(hit.y, hit.z), B = new THREE.Vector3(Bw.x, Bw.y, Bw.z), pts = [];
+  for (let i = 0; i <= 50; i++) { const t = i / 50, p = A.clone().lerp(B, t); p.y += 4 * apex * t * (1 - t) + bend.y * t * (1 - t); p.z += bend.z * t * (1 - t); pts.push(p); }
+  return pts;
+}
+function update3d(){
+  if (!T3) return;
+  const T = T3, w = S.w, ex = excess(S.pressure), wy = clamp(-ex * 0.05, -1.5, 1.5);
+  T.wind = { x: w.x, y: wy, z: w.z };
+  // 하늘색: 고기압은 맑고 파랗게, 저기압은 흐리고 회색으로
+  const f = clamp((S.pressure - 1013) / 30, -1, 1), base = new THREE.Color(0xcfdde6), c = f >= 0 ? base.lerp(new THREE.Color(0xb3d3ef), f) : base.lerp(new THREE.Color(0xaeb3b8), -f);
+  T.scene.background.copy(c); T.scene.fog.color.copy(c);
+  // 바람 색·풍향 자루
+  const sp = Math.hypot(w.x, w.z), yawA = Math.atan2(-w.z, w.x), s3 = Math.hypot(w.x, wy, w.z);
+  T.stMat.color.copy(windColor3(s3)); T.stMat.opacity = Math.min(0.9, 0.3 + s3 / 7);
+  T.socks.forEach(s => { s.yaw.rotation.y = yawA; s.pitch.userData.droop = -(1 - Math.min(sp / 7, 1)) * 1.3; });
+  // 움직이는 것들 다시 그림
+  const dyn = T.dyn; while (dyn.children.length) { const o = dyn.children.pop(); o.traverse && o.traverse(k => { if (k.geometry) k.geometry.dispose(); }); }
+  const a = aim(), b0 = { z: P.baseZ || 0, y: P.baseY }, drift = { z: b0.z - a.z, y: b0.y - a.y }, apex = 11;
+  // 오늘 표로 쏜 화살(빨강): 바람을 거슬러 겨냥한 쪽으로 나갔다가 홍심으로
+  dyn.add(tube3(path3({ z: 0, y: CY }, apex, { z: (a.z - b0.z) * 2, y: 0 }), 0xc2362b, 0.09, 1));
+  // 기준표 그대로 쏜 화살(회색): 바람에 밀린 자리로
+  if (Math.hypot(drift.z, drift.y) > 0.03) dyn.add(tube3(path3({ z: drift.z, y: CY + drift.y }, apex, { z: 0, y: 0 }), 0x6b6b6b, 0.06, 0.7));
+  dyn.add(onFace3(new THREE.RingGeometry(0.09, 0.16, 28), a, 0xc2362b, 0.012));
+  const aw = f2w(a.y, a.z), al = T.label('오늘 표', '#9e2f22', 'rgba(255,255,255,.9)', 26); al.position.set(aw.x - 0.3, aw.y + 0.45, aw.z); al.scale.multiplyScalar(0.35); dyn.add(al);
+  if (Math.hypot(drift.z, drift.y) > 0.03) dyn.add(onFace3(new THREE.CircleGeometry(0.06, 24), { z: drift.z, y: CY + drift.y }, 0x444444, 0.016));
+  // 하늘의 바람 화살표 + 이름표
+  if (sp > 0.05) {
+    const col = windColor3(sp);
+    [30, 80, 130].forEach(x => { const ar = windArrow3(sp, col); ar.position.set(x, 18, 0); ar.rotation.y = yawA; dyn.add(ar); });
+    const wl = T.label(`바람 ${fmt(sp)} m/s (${windWords(w).replace(' m/s', '')})`, '#' + col.clone().multiplyScalar(0.7).getHexString(), 'rgba(255,255,255,.92)', 34);
+    wl.position.set(80, 22, 0); wl.scale.multiplyScalar(1.6); dyn.add(wl);
+  } else { const wl = T.label('수평 바람 거의 없음', '#3b5a78', 'rgba(255,255,255,.85)', 34); wl.position.set(80, 20, 0); wl.scale.multiplyScalar(1.4); dyn.add(wl); }
+  // 기압풍 기둥: 평기압을 벗어날수록 많고 길게
+  const lvl = Math.min(1, Math.abs(ex) / 20);
+  if (ex !== 0) {
+    const colV = new THREE.Color(wy > 0 ? 0xd0662a : 0x3a74b8), xs = lvl < 0.34 ? [80] : lvl < 0.67 ? [45, 80, 115] : [25, 52, 80, 108, 135];
+    xs.forEach(x => [-10, 10].forEach(z => { const ar = windArrow3(1.5 + lvl * 7, colV); ar.rotation.z = wy > 0 ? Math.PI / 2 : -Math.PI / 2; ar.position.set(x, wy > 0 ? 3 + lvl * 4 : 9 + lvl * 4, z); dyn.add(ar); }));
+    const vl = T.label(`${wy > 0 ? '▲ 올리는 바람' : '▼ 누르는 바람'} · 평기압 벗어남 ${ex > 0 ? '+' : ''}${ex} hPa`, wy > 0 ? '#9a4316' : '#244f80', 'rgba(255,255,255,.92)', 32);
+    vl.position.set(80, 16, -10); vl.scale.multiplyScalar(1.3); dyn.add(vl);
+  }
+  const pl = T.label(`${ex > 0 ? 'H 고기압' : ex < 0 ? 'L 저기압' : '평기압'} ${S.pressure} hPa`, ex > 0 ? '#1f4a78' : ex < 0 ? '#a8402c' : '#6b604f', 'rgba(255,255,255,.9)', 34);
+  pl.position.set(80, 27, 0); pl.scale.multiplyScalar(1.6); dyn.add(pl);
+  // 범례·설명
+  $('lg3d').innerHTML = `<div><i style="background:#c2362b"></i>오늘 표로 쏜 화살 → 홍심</div>${Math.hypot(drift.z, drift.y) > 0.03 ? '<div><i style="background:#6b6b6b"></i>기준표 그대로 쏜 화살</div>' : ''}<div><i style="background:#3b82c4"></i>바람 흐름 (색: 약 → 강)</div>`;
+  const miss = [Math.abs(drift.z) >= 0.02 ? `${drift.z > 0 ? '오른쪽' : '왼쪽'} ${cm(Math.abs(drift.z))} cm` : '', Math.abs(drift.y) >= 0.02 ? `${drift.y > 0 ? '위' : '아래'} ${cm(Math.abs(drift.y))} cm` : ''].filter(Boolean).join(', ');
+  const pres = ex > 0 ? '고기압 누르는 바람' : ex < 0 ? '저기압 올리는 바람' : '';
+  const hor = sp < 0.3 ? '' : windWords(w);
+  $('i3d').textContent = `${[pres, hor].filter(Boolean).join(' · ') || '평기압에 바람도 거의 없는 고요한 상태'}입니다. ${miss ? `기준표 그대로 쏘면 홍심에서 ${miss} 쪽에 떨어지니, 오늘 표로 쏘세요.` : '기준표 그대로 쏘면 됩니다.'}`;
+  requestAnimationFrame(() => { const h = $('i3d').offsetHeight; $('v3d').style.setProperty('--nh', (h + 20) + 'px'); });
+}
+
+// ---------- 공통 ----------
+function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2800); }
+new ResizeObserver(() => draw()).observe(cv);
+$('guideBtn').style.opacity = guide ? 1 : 0.55;
+// 앱을 열면 늘 ①부터: 날씨를 읽을지 묻는다 (오늘 값은 남아 있어 아니오를 누르면 그대로 이어서)
+setStep(2);   // 날씨 읽기는 위쪽 📍 날씨 버튼으로 (선택)
+renderHits();
+}
+</script>
+<script>if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
+</body>
+</html>
