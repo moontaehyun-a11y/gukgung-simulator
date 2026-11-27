@@ -478,7 +478,7 @@ function fxLoop(now){
   const w = S.w, sp = Math.hypot(w.x, w.z), ex = excess(S.pressure);
   // 바람결: 바람이 불어 가는 방향으로 흐른다 (맞바람 ↓, 뒷바람 ↑, 왼쪽바람 →, 오른쪽바람 ←)
   if (sp >= 0.2) {
-    const a = Math.min(0.8, 0.38 + sp * 0.08);
+    const a = Math.min(0.8, 0.38 + sp * 0.08) * 0.5;   // 전보다 절반 진하기
     g.lineCap = 'round';
     FXP.forEach(p => {
       let px = p.x * W, py = p.y * H;
