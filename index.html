@@ -58,7 +58,8 @@ input[type=range]{width:100%;height:28px;accent-color:var(--ink);background:tran
 .tog{font-size:12.5px;padding:7px 10px;min-height:36px}
 .tog.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 /* 모달·시트 */
-.veil{position:fixed;left:0;right:0;top:0;height:100vh;height:var(--vvh,100dvh);background:rgba(20,16,12,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:12px}
+.veil{position:fixed;left:0;right:0;top:0;height:100vh;height:var(--vvh,100dvh);background:rgba(20,16,12,.45);display:flex;align-items:flex-start;justify-content:center;z-index:40;padding:calc(var(--hh) + 12px + env(safe-area-inset-top)) 12px 12px}
+/* 창은 화면 위쪽(정보줄 바로 아래)에 붙여 연다: 브라우저가 높이를 잘못 알려 줘도 위가 잘리지 않게 */
 .veil[hidden]{display:none}
 .sheet{background:var(--paper);border-radius:16px;padding:16px;width:min(460px,100%);max-height:100%;overflow:auto;overscroll-behavior:contain;box-shadow:0 20px 50px rgba(0,0,0,.3)}
 .sheet h2{font-size:19px;margin:0 0 6px}
@@ -165,6 +166,17 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 @keyframes ring{0%{transform:scale(.4);opacity:.95}100%{transform:scale(3.4);opacity:0}}
 @media (prefers-reduced-motion:reduce){#intro .ia,#intro .ring{animation:none}}
 [hidden]{display:none !important}
+#vPers .ph{position:sticky;top:-12px;background:rgba(250,248,242,.97);margin:-12px -14px 4px;padding:10px 14px 6px;z-index:1}
+#vPers .ph .btn{min-height:34px;padding:5px 14px}
+@media (max-width:600px){
+  /* 휴대폰: 설명 글을 줄이고 줄 간격을 좁혀 한 화면에 다 들어오게 */
+  #vPers .sheet>p.hint,#vPers .hint[style]{display:none}
+  #vPers .sl{margin:0;grid-template-columns:62px 1fr 74px}
+  #vPers input[type=range]{height:26px}
+  #vPers .bzfine{margin:0 0 2px 70px}
+  #vPers .sheet{max-height:64%;padding:12px 14px}
+  #vPers hr{margin:10px 0 8px !important}
+}
 #toast{position:fixed;left:50%;top:calc(var(--hh) + 74px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(31,28,24,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
 #toast.on{opacity:1}
 @media (max-width:480px){.steps span{padding:4px 7px;font-size:11.5px}header h1{display:none}.sl{grid-template-columns:54px 1fr 84px}header .ic{width:35px;height:38px;font-size:15px}header{gap:4px;padding:0 6px}.wxcard small{display:none}}
@@ -267,7 +279,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 <!-- 개인 기준 -->
 <div class="veil" id="vPers" hidden>
   <div class="sheet">
-    <h2>⚙ 개인 기준 (표 간격)</h2>
+    <div class="row ph"><h2 class="grow">⚙ 개인 기준 (표 간격)</h2><button class="btn pri" id="persClose">닫기</button></div>
     <p class="hint">슬라이더대로 옮긴 표가 실제와 맞지 않으면 여기서 간격을 고칩니다. 이 값은 이 기기에 따로 저장되어 <b>오늘 값을 지워도 그대로</b> 남습니다.</p>
     <div class="sl"><label for="kB">상하 기준</label><input id="kB" type="range" min="0" max="4.2" step="0.05"><output id="oB"></output></div>
     <div class="hint" style="margin:-2px 0 6px 70px">평기압(1007~1019 hPa)일 때 겨냥 높이</div>
@@ -283,7 +295,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
     <div class="hint" style="margin:-2px 0 6px 70px">옆바람 1 m/s당 좌우 이동</div>
     <div class="sl"><label for="kX">앞뒤</label><input id="kX" type="range" min="5" max="50" step="1"><output id="oKX"></output></div>
     <div class="hint" style="margin:-2px 0 6px 70px">맞바람·순풍 1 m/s당 위아래 이동</div>
-    <div class="row" style="margin-top:10px"><button class="btn red" id="persFix">지금 값을 초기값으로 고정</button><button class="btn" id="persFactory">초기값으로</button><span class="grow"></span><button class="btn pri" id="persClose">닫기</button></div>
+    <div class="row" style="margin-top:10px"><button class="btn red" id="persFix">지금 값을 초기값으로 고정</button><button class="btn" id="persFactory">초기값으로</button></div>
     <hr style="border:0;border-top:1px solid var(--line);margin:14px 0 10px">
     <div class="row"><span class="hint grow">오늘 기압·바람만 지우기 (개인 기준은 유지)</span><button class="btn" id="resetToday">오늘 값 지우기</button></div>
   </div>
