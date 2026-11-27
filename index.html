@@ -317,7 +317,7 @@ const CY = (FACE.boxTop + FACE.boxBot) / 2;   // 홍심 중심
 const P_LO = 1007, P_HI = 1019;
 
 // ---------- 저장: 개인 기준(따로 영구 보관) / 오늘 상태 ----------
-const FACT = { baseY: TH * 0.75, baseZ: 0, perHpa: 0.07, perHpaLo: 0.05, kw: 0.20, kx: 0.25 };   // 저기압 쪽은 공기가 덜 저항하는 만큼 간격을 따로(기본 작게)
+const FACT = { baseY: 1.20, baseZ: 0, perHpa: 0.40, perHpaLo: 0.20, kw: 0.25, kx: 0.25 };   // 처음 쓰는 사람의 기본값 (상하 120 · 좌우 가운데 · 고기압 40 · 저기압 20 · 좌우 25 · 앞뒤 25 cm)   // 저기압 쪽은 공기가 덜 저항하는 만큼 간격을 따로(기본 작게)
 const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ? Object.assign({}, d, v) : { ...d }; } catch (e) { return { ...d }; } };
 const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 // 초기값: 사용자가 '지금 값을 초기값으로 고정'을 누르면 그 값이 초기값이 된다 (없으면 공장값)
