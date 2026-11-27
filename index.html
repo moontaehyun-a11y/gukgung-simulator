@@ -200,6 +200,8 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 #vPers .sheet.tut .pbox{border-color:#e0352b;background:rgba(224,53,43,.05);animation:pboxPulse 1.3s ease-in-out infinite}
 @keyframes pboxPulse{50%{box-shadow:0 0 0 3px rgba(224,53,43,.25)}}
 @media (prefers-reduced-motion:reduce){#vPers .sheet.tut .pbox{animation:none}}
+#vPers .tutring{box-shadow:0 0 0 3px #e0352b;animation:ringPulse 1.1s ease-in-out infinite}
+@keyframes ringPulse{50%{box-shadow:0 0 0 6px rgba(224,53,43,.45)}}
 </style>
 </head>
 <body>
@@ -331,6 +333,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
     <div class="hint" style="margin:-2px 0 6px 70px">옆바람 1 m/s당 좌우 이동</div>
     <div class="sl"><label for="kX">앞뒤</label><input id="kX" type="range" min="5" max="50" step="1"><output id="oKX"></output></div>
     <div class="hint" style="margin:-2px 0 6px 70px">맞바람·순풍 1 m/s당 위아래 이동</div>
+    <div class="perstut" id="fixTut" hidden><div class="t">👇 지금 값을 초기값으로 고정을 눌러주세요</div><div class="s">상하 기준과 좌우 기준을 모두 움직였습니다. 아래 <b>지금 값을 초기값으로 고정</b>을 누르면 이 기준표가 저장되어, 초기화해도 이 자리로 돌아옵니다.</div></div>
     <div class="row" style="margin-top:10px"><button class="btn red" id="persFix">지금 값을 초기값으로 고정</button><button class="btn" id="persFactory">초기값으로</button></div>
     <hr style="border:0;border-top:1px solid var(--line);margin:14px 0 10px">
     <div class="row"><span class="hint grow">오늘 기압·바람만 지우기 (개인 기준은 유지)</span><button class="btn" id="resetToday">오늘 값 지우기</button></div>
@@ -1462,6 +1465,19 @@ $('pages').addEventListener('pointerup', e => {
     box.hidden = false; sheet.classList.add('tut'); sheet.scrollTop = 0;
   });
   $('persTutOk').onclick = hide; $('persClose').addEventListener('click', hide);
+  // 상하·좌우 기준을 둘 다 움직이고 나면 → "지금 값을 초기값으로 고정"을 짚어 준다
+  let armed = false, mY = false, mZ = false;
+  const fixBox = $('fixTut'), fixBtn = $('persFix');
+  const check = () => {
+    if (!armed || !mY || !mZ || !fixBox.hidden) return;
+    fixBox.hidden = false; fixBtn.classList.add('tutring');
+    setTimeout(() => fixBox.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+  };
+  const markY = () => { mY = true; check(); }, markZ = () => { mZ = true; check(); };
+  $('kB').addEventListener('input', markY); ['byD10', 'byD', 'byU', 'byU10'].forEach(id => $(id).addEventListener('click', markY));
+  $('kBZ').addEventListener('input', markZ); ['bzL', 'bz0', 'bzR'].forEach(id => $(id).addEventListener('click', markZ));
+  fixBtn.addEventListener('click', () => { armed = false; fixBox.hidden = true; fixBtn.classList.remove('tutring'); });
+  $('persBtn').addEventListener('click', () => { if (!box.hidden) { armed = true; mY = mZ = false; fixBox.hidden = true; fixBtn.classList.remove('tutring'); } });
 })();
 // 안드로이드 브라우저는 주소창·아래 메뉴가 나타났다 사라지며 보이는 높이가 바뀐다 → 실제 보이는 높이로 창 크기를 맞춘다
 function setVVH(){ const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight; document.documentElement.style.setProperty('--vvh', h + 'px'); }
