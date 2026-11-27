@@ -119,11 +119,11 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 .sjt{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 0 var(--line)}
 .sjt th,.sjt td{border:1px solid var(--line);text-align:center;padding:2px}
 .sjt th{font-size:12.5px;background:#f8f5ee;padding:6px 0}
-.sjt td.c{height:62px;cursor:pointer;position:relative}
-.sjt td.c svg{display:block;margin:0 auto;width:100%;height:58px}
+.sjt td.c{height:72px;cursor:pointer;position:relative;padding:0}
+.sjt td.c svg{display:block;width:100%;height:72px}
 .sjt td.n{font-weight:800;font-size:16px;width:13%}
 .sjt td.n.full{color:var(--red)}
-.sjt .mk{font-size:24px;font-weight:800;line-height:58px}
+.sjt .mk{font-size:24px;font-weight:800;line-height:72px}
 .sjt .mk.h{color:var(--red)}.sjt .mk.x{color:#8a8478}
 .sjt tr.cur th{background:#211c18;color:#fff}
 #toast{position:fixed;left:50%;top:calc(var(--hh) + 74px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(31,28,24,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
@@ -170,7 +170,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
     <div class="sj">
       <div class="sj-h"><b id="sjDate"></b><span class="grow"></span><span id="sjSum"></span></div>
       <table class="sjt" id="sjTbl"></table>
-      <div class="hint" style="margin-top:8px">과녁 화면에서 <b>맞은 자리를 길게 누르면</b> 다음 칸에 자리와 함께 들어갑니다. 칸을 누르면 <b>○ 관중 → × 불 → 빈칸</b>으로 직접 바꿀 수 있습니다.</div>
+      <div class="hint" style="margin-top:8px">과녁 화면에서 <b>맞은 자리를 길게 누르면</b> 다음 칸에 자리와 함께 들어갑니다. 칸 안의 작은 과녁에서 <b>화살이 떨어진 자리를 누르면</b> 바로 기록됩니다. 과녁 밖을 누르면 그 방향(넘음·짧음·왼쪽·오른쪽)으로 빠진 불로 표시되고, 찍힌 점을 다시 누르면 지워집니다.</div>
       <div class="row" style="margin-top:10px"><button class="btn" id="sjUndo">↶ 마지막 칸 지우기</button><span class="grow"></span><button class="btn" id="sjClr">시지 지우기</button></div>
     </div>
   </div>
@@ -984,12 +984,31 @@ if (!Array.isArray(S.sheet) || S.sheet.length !== 9) S.sheet = blankSheet();
 if (S.date !== today()) { if (S.date) { S.sheet = blankSheet(); S.hits = []; } S.date = today(); saveS(); }   // 날이 바뀌면 시지는 새로
 const isHit = p => Math.abs(p.z) <= TW / 2 && p.y >= 0 && p.y <= TH;
 function nextCell(){ for (let r = 0; r < 9; r++) for (let a = 0; a < 5; a++) if (!S.sheet[r][a]) return [r, a]; return null; }
-function cellSVG(c){
-  // 작은 과녁 위에 맞은 자리 (그림 범위: 좌우 ±1.6 m, 위아래 −0.6 ~ 3.3 m)
-  const W = 40, H = 50, SZ = 2.7, SY = 3.4, Y0 = -0.35, X = z => W / 2 + z / SZ * W, Y = y => H - (y - Y0) / SY * H, F = FACE;
-  const dz = clamp(c.z, -1.3, 1.3), dy = clamp(c.y, Y0 + 0.05, Y0 + SY - 0.05);
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"><rect x="${X(-TW / 2)}" y="${Y(TH)}" width="${TW / SZ * W}" height="${TH / SY * H}" fill="#f7f5ef" stroke="#cfc6b6" stroke-width=".6"/><rect x="${X(-F.boxHalf)}" y="${Y(F.boxTop)}" width="${2 * F.boxHalf / SZ * W}" height="${(F.boxTop - F.boxBot) / SY * H}" fill="#211c18"/><rect x="${X(-F.bandHalf)}" y="${Y(F.bandTop)}" width="${2 * F.bandHalf / SZ * W}" height="${(F.bandTop - F.bandBot) / SY * H}" fill="#211c18"/><circle cx="${X(0)}" cy="${Y(CY)}" r="${F.r / SZ * W}" fill="#c8362b"/><circle cx="${X(dz)}" cy="${Y(dy)}" r="4" fill="${c.hit ? '#123d8a' : '#8a8478'}" stroke="#fff" stroke-width="1"/></svg>`;
+// 칸 그림: 가운데에 작은 과녁, 둘레는 빠진 방향을 찍는 여백 (칸 전체 = 좌우 5 m × 위아래 5.6 m)
+const CV = { W: 50, H: 60, SZ: 5, SY: 5.6 }; CV.Y0 = TH / 2 - CV.SY / 2;
+const cX = z => CV.W / 2 + z / CV.SZ * CV.W, cY = y => CV.H - (y - CV.Y0) / CV.SY * CV.H;
+function missZone(c){
+  const zx = c.z < -TW / 2 ? -1 : c.z > TW / 2 ? 1 : 0, zy = c.y > TH ? 1 : c.y < 0 ? -1 : 0;
+  return { zx, zy, name: (zy > 0 ? '넘음' : zy < 0 ? '짧음' : '') + (zx ? (zy ? '·' : '') + (zx < 0 ? '왼쪽' : '오른쪽') : '') };
 }
+function cellSVG(c){
+  const { W, H, SZ, SY } = CV, F = FACE, X = cX, Y = cY;
+  let zone = '', dot = '';
+  if (c) {
+    const dz = clamp(c.z, -SZ / 2 + 0.15, SZ / 2 - 0.15), dy = clamp(c.y, CV.Y0 + 0.15, CV.Y0 + SY - 0.15);
+    if (!c.hit && c.z != null) {
+      // 빠진 구역을 연하게 칠한다 (과녁 바깥 8칸 중 하나)
+      const { zx, zy, name } = missZone(c);
+      const x0 = zx < 0 ? 0 : zx > 0 ? X(TW / 2) : X(-TW / 2), x1 = zx < 0 ? X(-TW / 2) : zx > 0 ? W : X(TW / 2);
+      const y0 = zy > 0 ? 0 : zy < 0 ? Y(0) : Y(TH), y1 = zy > 0 ? Y(TH) : zy < 0 ? H : Y(0);
+      zone = `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="rgba(194,54,43,.22)"/>`;
+    }
+    if (c.z != null) dot = `<circle cx="${X(dz)}" cy="${Y(dy)}" r="3.6" fill="${c.hit ? '#123d8a' : '#a8402c'}" stroke="#fff" stroke-width="1"/>`;
+  }
+  const op = c ? 1 : 0.5;   // 빈칸은 과녁을 흐리게
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${zone}<g opacity="${op}"><rect x="${X(-TW / 2)}" y="${Y(TH)}" width="${TW / SZ * W}" height="${TH / SY * H}" fill="#f7f5ef" stroke="#bdb3a2" stroke-width=".6"/><rect x="${X(-F.bandHalf)}" y="${Y(F.bandTop)}" width="${2 * F.bandHalf / SZ * W}" height="${(F.bandTop - F.bandBot) / SY * H}" fill="#211c18"/><rect x="${X(-F.boxHalf)}" y="${Y(F.boxTop)}" width="${2 * F.boxHalf / SZ * W}" height="${(F.boxTop - F.boxBot) / SY * H}" fill="#211c18"/><circle cx="${X(0)}" cy="${Y(CY)}" r="${F.r / SZ * W}" fill="#c8362b"/></g>${dot}</svg>`;
+}
+function dropHit(c){ if (c && c.t && !c.manual) { const i = (S.hits || []).findIndex(p => p.t === c.t); if (i >= 0) S.hits.splice(i, 1); } }
 function renderSheet(){
   const dt = new Date(S.date + 'T00:00:00');
   $('sjDate').textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일 시지`;
@@ -998,7 +1017,7 @@ function renderSheet(){
   S.sheet.forEach((row, r) => {
     let n = 0, m = 0;
     const cells = row.map((c, a) => {
-      if (!c) return `<td class="c" data-r="${r}" data-a="${a}"></td>`;
+      if (!c) return `<td class="c e" data-r="${r}" data-a="${a}">${cellSVG(null)}</td>`;
       m++; shots++; if (c.hit) { n++; hits++; }
       return `<td class="c" data-r="${r}" data-a="${a}">${c.z != null ? cellSVG(c) : `<span class="mk ${c.hit ? 'h' : 'x'}">${c.hit ? '○' : '×'}</span>`}</td>`;
     }).join('');
@@ -1006,12 +1025,18 @@ function renderSheet(){
   });
   $('sjTbl').innerHTML = h;
   $('sjSum').innerHTML = shots ? `<b>${hits}중</b> / ${shots}시 · ${Math.round(hits / shots * 100)}%` : '아직 기록 없음';
-  $('sjTbl').querySelectorAll('td.c').forEach(td => td.onclick = () => {
-    const r = +td.dataset.r, a = +td.dataset.a, c = S.sheet[r][a];
-    // 빈칸 → ○ 관중 → × 불 → 빈칸 (자리 기록이 있는 칸은 관중/불 판정만 바꾸다가 빈칸으로)
-    if (!c) S.sheet[r][a] = { hit: true, t: Date.now() };
-    else if (c.hit) S.sheet[r][a] = { ...c, hit: false };
-    else { S.sheet[r][a] = null; if (c.t) { const i = (S.hits || []).findIndex(p => p.t === c.t); if (i >= 0) S.hits.splice(i, 1); } }
+  // 칸 안을 누른 자리 = 화살이 떨어진 자리 (과녁 안이면 관중, 밖이면 그 방향으로 불). 찍힌 점을 다시 누르면 지움
+  $('sjTbl').querySelectorAll('td.c').forEach(td => td.onclick = e => {
+    const r = +td.dataset.r, a = +td.dataset.a, c = S.sheet[r][a], sv = td.querySelector('svg');
+    const rect = (sv || td).getBoundingClientRect(), fx = (e.clientX - rect.left) / rect.width, fy = (e.clientY - rect.top) / rect.height;
+    const q = { z: +((fx - 0.5) * CV.SZ).toFixed(3), y: +(CV.Y0 + (1 - fy) * CV.SY).toFixed(3) };
+    if (c && c.z != null) {
+      const px = cX(c.z) / CV.W * rect.width + rect.left, py = cY(c.y) / CV.H * rect.height + rect.top;
+      if (Math.hypot(e.clientX - px, e.clientY - py) < 12) { S.sheet[r][a] = null; dropHit(c); saveS(); renderSheet(); renderHits(); draw(); return; }
+    }
+    if (c && c.z == null && !c.hit) { S.sheet[r][a] = null; saveS(); renderSheet(); return; }   // 위치 없이 ×로 둔 칸은 누르면 지움
+    dropHit(c);
+    S.sheet[r][a] = { z: q.z, y: q.y, hit: isHit(q), t: Date.now(), manual: true };
     saveS(); renderSheet(); renderHits(); draw();
   });
   $('pgBtn').textContent = curPage ? '표' : '시지';
