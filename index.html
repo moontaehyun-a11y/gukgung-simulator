@@ -126,6 +126,10 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 .sjt .mk{font-size:24px;font-weight:800;line-height:72px}
 .sjt .mk.h{color:var(--red)}.sjt .mk.x{color:#8a8478}
 .sjt tr.cur th{background:#211c18;color:#fff}
+.sjt td.c.miss{background:#fff4d6}
+.missb{position:absolute;left:50%;top:3px;transform:translateX(-50%);background:#d9901a;color:#fff;font-size:9.5px;font-weight:800;padding:1px 4px;border-radius:4px;letter-spacing:.3px;pointer-events:none}
+#sjSum small{font-size:11px;color:var(--ink2)}
+.sjt td.c{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #toast{position:fixed;left:50%;top:calc(var(--hh) + 74px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(31,28,24,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
 #toast.on{opacity:1}
 @media (max-width:480px){.steps span{padding:4px 7px;font-size:11.5px}header h1{display:none}.sl{grid-template-columns:54px 1fr 84px}header .ic{width:35px;height:38px;font-size:15px}header{gap:4px;padding:0 6px}.wxcard small{display:none}}
@@ -170,7 +174,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
     <div class="sj">
       <div class="sj-h"><b id="sjDate"></b><span class="grow"></span><span id="sjSum"></span></div>
       <table class="sjt" id="sjTbl"></table>
-      <div class="hint" style="margin-top:8px">과녁 화면에서 <b>맞은 자리를 길게 누르면</b> 다음 칸에 자리와 함께 들어갑니다. 칸 안의 작은 과녁에서 <b>화살이 떨어진 자리를 누르면</b> 바로 기록됩니다. 과녁 밖을 누르면 그 방향(넘음·짧음·왼쪽·오른쪽)으로 빠진 불로 표시되고, 찍힌 점을 다시 누르면 지워집니다.</div>
+      <div class="hint" style="margin-top:8px">과녁 화면에서 <b>맞은 자리를 길게 누르면</b> 다음 칸에 자리와 함께 들어갑니다. 칸 안의 작은 과녁에서 <b>화살이 떨어진 자리를 누르면</b> 바로 기록됩니다. 과녁 밖을 누르면 그 방향(넘음·짧음·왼쪽·오른쪽)으로 빠진 불로 표시되고, 찍힌 점을 다시 누르면 지워집니다. 자세 실수로 쏜 화살은 칸을 <b>길게 누르면 MISS</b>로 표시되어 적중률과 보정에서 빠집니다.</div>
       <div class="row" style="margin-top:10px"><button class="btn" id="sjUndo">↶ 마지막 칸 지우기</button><span class="grow"></span><button class="btn" id="sjClr">시지 지우기</button></div>
     </div>
   </div>
@@ -537,7 +541,7 @@ function drawHits(g, X, Y){
 }
 const hitAvg = H => ({ z: H.reduce((s, p) => s + p.z, 0) / H.length, y: H.reduce((s, p) => s + p.y, 0) / H.length });
 function hitProposal(){
-  const H = (S.hits || []).filter(p => !p.used); if (H.length < 3) return null;
+  const H = (S.hits || []).filter(p => !p.used && !p.bad); if (H.length < 3) return null;
   const n = H.length, dz = H.map(p => p.z), dy = H.map(p => p.y - CY), mz = dz.reduce((a, b) => a + b, 0) / n, my = dy.reduce((a, b) => a + b, 0) / n;
   const same = (arr, m) => arr.filter(v => Math.sign(v) === Math.sign(m)).length >= Math.ceil(n * 2 / 3);   // 2/3 이상이 같은 쪽
   const out = [];
@@ -1012,21 +1016,23 @@ function dropHit(c){ if (c && c.t && !c.manual) { const i = (S.hits || []).findI
 function renderSheet(){
   const dt = new Date(S.date + 'T00:00:00');
   $('sjDate').textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일 시지`;
-  let hits = 0, shots = 0; const nc = nextCell();
+  let hits = 0, shots = 0, misses = 0, missHits = 0; const nc = nextCell();
   let h = '<tr><th style="width:13%">순</th>' + [1, 2, 3, 4, 5].map(i => `<th>${i}시</th>`).join('') + '<th style="width:13%">중</th></tr>';
   S.sheet.forEach((row, r) => {
     let n = 0, m = 0;
     const cells = row.map((c, a) => {
       if (!c) return `<td class="c e" data-r="${r}" data-a="${a}">${cellSVG(null)}</td>`;
-      m++; shots++; if (c.hit) { n++; hits++; }
-      return `<td class="c" data-r="${r}" data-a="${a}">${c.z != null ? cellSVG(c) : `<span class="mk ${c.hit ? 'h' : 'x'}">${c.hit ? '○' : '×'}</span>`}</td>`;
+      m++; shots++; if (c.hit) { n++; hits++; } if (c.miss) { misses++; if (c.hit) missHits++; }
+      return `<td class="c${c.miss ? ' miss' : ''}" data-r="${r}" data-a="${a}">${c.z != null ? cellSVG(c) : `<span class="mk ${c.hit ? 'h' : 'x'}">${c.hit ? '○' : '×'}</span>`}${c.miss ? '<span class="missb">MISS</span>' : ''}</td>`;
     }).join('');
     h += `<tr class="${nc && nc[0] === r ? 'cur' : ''}"><th>${r + 1}</th>${cells}<td class="n${n === 5 ? ' full' : ''}">${m ? n : ''}</td></tr>`;
   });
   $('sjTbl').innerHTML = h;
-  $('sjSum').innerHTML = shots ? `<b>${hits}중</b> / ${shots}시 · ${Math.round(hits / shots * 100)}%` : '아직 기록 없음';
+  const vs = shots - misses, vh = hits - missHits;
+  $('sjSum').innerHTML = shots ? `<b>${hits}중</b> / ${shots}시${vs ? ` · ${Math.round(vh / vs * 100)}%` : ''}${misses ? ` <small>(MISS ${misses}발 제외)</small>` : ''}` : '아직 기록 없음';
   // 칸 안을 누른 자리 = 화살이 떨어진 자리 (과녁 안이면 관중, 밖이면 그 방향으로 불). 찍힌 점을 다시 누르면 지움
   $('sjTbl').querySelectorAll('td.c').forEach(td => td.onclick = e => {
+    if (lpCellFired) { lpCellFired = false; return; }   // 길게 누른 뒤 손을 뗀 클릭은 무시
     const r = +td.dataset.r, a = +td.dataset.a, c = S.sheet[r][a], sv = td.querySelector('svg');
     const rect = (sv || td).getBoundingClientRect(), fx = (e.clientX - rect.left) / rect.width, fy = (e.clientY - rect.top) / rect.height;
     const q = { z: +((fx - 0.5) * CV.SZ).toFixed(3), y: +(CV.Y0 + (1 - fy) * CV.SY).toFixed(3) };
@@ -1041,6 +1047,24 @@ function renderSheet(){
   });
   $('pgBtn').textContent = curPage ? '표' : '시지';
 }
+
+// 자세 실수: 시지 칸을 길게 누르면 MISS 표시 (적중률·개인 기준 보정에서 뺀다). 다시 길게 누르면 해제
+let lpCell = null, lpCellFired = false;
+$('sjTbl').addEventListener('pointerdown', e => {
+  const td = e.target.closest('td.c'); if (!td) return;
+  lpCell = { td, x: e.clientX, y: e.clientY, timer: setTimeout(() => {
+    const r = +td.dataset.r, a = +td.dataset.a, c = S.sheet[r][a];
+    if (!c) S.sheet[r][a] = { hit: false, miss: true, t: Date.now(), manual: true };
+    else S.sheet[r][a] = { ...c, miss: !c.miss };
+    const nc2 = S.sheet[r][a], h = (S.hits || []).find(p => p.t === nc2.t); if (h) h.bad = !!nc2.miss;
+    lpCellFired = true; lpCell = null; saveS(); renderSheet(); renderHits(); draw();
+    try { navigator.vibrate && navigator.vibrate(30); } catch (er) {}
+    toast(nc2.miss ? `${r + 1}순 ${a + 1}시 MISS (자세 실수) — 적중률·보정에서 뺍니다` : `${r + 1}순 ${a + 1}시 MISS 해제`);
+  }, 500) };
+});
+$('sjTbl').addEventListener('pointermove', e => { if (lpCell && Math.hypot(e.clientX - lpCell.x, e.clientY - lpCell.y) > 10) { clearTimeout(lpCell.timer); lpCell = null; } });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => $('sjTbl').addEventListener(ev, () => { if (lpCell) { clearTimeout(lpCell.timer); lpCell = null; } }));
+$('sjTbl').addEventListener('contextmenu', e => e.preventDefault());
 $('sjUndo').onclick = () => {
   for (let r = 8; r >= 0; r--) for (let a = 4; a >= 0; a--) { const c = S.sheet[r][a]; if (c) { S.sheet[r][a] = null; if (c.t) { const i = (S.hits || []).findIndex(p => p.t === c.t); if (i >= 0) S.hits.splice(i, 1); } saveS(); renderSheet(); renderHits(); draw(); return; } }
 };
