@@ -223,6 +223,9 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 #rgList .rgi{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:5px 0;border-top:1px solid var(--line)}
 #rgList .rgi span{flex:1}
 #rgList .rgi .btn{min-height:30px;padding:4px 10px;font-size:12.5px}
+/* 현장 바람 질문: 과녁을 가리지 않게 아래쪽 조작판 자리에 띄운다 */
+#vAsk{background:transparent;align-items:flex-end;justify-content:center;pointer-events:none;padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
+#vAsk .sheet{pointer-events:auto;width:100%;box-shadow:0 -4px 22px rgba(0,0,0,.22)}
 </style>
 </head>
 <body>
@@ -1559,7 +1562,7 @@ $('pages').addEventListener('pointerup', e => {
       T.querySelector('.dim path').setAttribute('d', d);
       const u = cur.els[0].getBoundingClientRect(), dn = cur.els[1].getBoundingClientRect();
       const cw = card.offsetWidth, ch = card.offsetHeight;
-      card.style.left = (vw / 2 - cw / 2) + 'px'; card.style.top = Math.max(8, (u.bottom + dn.top) / 2 - ch / 2) + 'px';
+      card.style.left = (vw / 2 - cw / 2) + 'px'; card.style.top = Math.max(u.bottom + 8, dn.top - ch - 14) + 'px';   // 과녁을 가리지 않게 아래 버튼 바로 위에
       return;
     }
     const r = cur.el.getBoundingClientRect(), vw = innerWidth, vh = (window.visualViewport && visualViewport.height) || innerHeight;
