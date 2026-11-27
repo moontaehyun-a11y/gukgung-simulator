@@ -19,7 +19,8 @@
    LAYOUT: 단계별 전체 화면, 과녁 위에 슬라이더가 떠 있는 구성 */
 :root{color-scheme:light only;--paper:#f3efe6;--ink:#211c18;--ink2:#6b6358;--line:#d8d0c2;--red:#c2362b;--blue:#1f5fbf;--ok:#2f7d4f;--hh:56px}
 *{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-x:hidden}
+/* 습사 화면을 옆에 붙여 둔 200% 너비 판이 바깥으로 새면 안드로이드 Chrome이 화면 폭을 두 배로 잡아 창들이 오른쪽으로 밀린다 → 꼭 가둔다 */
 html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;overflow:hidden;overscroll-behavior:none}
 button{font:inherit;color:inherit}
 .btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;min-height:44px}
@@ -33,8 +34,8 @@ header h1{font-size:15px;margin:0;flex:1;white-space:nowrap}
 .steps span.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .steps span.done{color:var(--ok);border-color:var(--ok)}
 .ic{flex:none;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:17px;cursor:pointer}
-main{position:absolute;inset:var(--hh) 0 0 0}
-.stage{position:absolute;inset:0}
+main{position:absolute;inset:var(--hh) 0 0 0;overflow:hidden}
+.stage{position:absolute;inset:0;overflow:hidden}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 /* 과녁 위 반투명 정보·조작판 */
 .glass{background:rgba(255,255,255,.84);border:1px solid rgba(255,255,255,.7);box-shadow:0 6px 20px rgba(0,0,0,.12);border-radius:14px}
