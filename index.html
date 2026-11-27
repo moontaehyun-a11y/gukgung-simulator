@@ -236,8 +236,6 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
     <div class="hint" style="margin:-2px 0 6px 70px">맞바람·순풍 1 m/s당 위아래 이동</div>
     <div class="row" style="margin-top:10px"><button class="btn red" id="persFix">지금 값을 초기값으로 고정</button><button class="btn" id="persFactory">초기값으로</button><span class="grow"></span><button class="btn pri" id="persClose">닫기</button></div>
     <hr style="border:0;border-top:1px solid var(--line);margin:14px 0 10px">
-    <div class="row" style="margin-bottom:8px"><span class="hint grow">지금 기준값을 글로 복사 (Claude에게 보내 표준값으로 만들 때)</span><button class="btn" id="persCopy">📋 기준값 복사</button></div>
-    <input class="field" id="persCopyTxt" readonly hidden style="font-size:13px;margin-bottom:8px">
     <div class="row"><span class="hint grow">오늘 기압·바람만 지우기 (개인 기준은 유지)</span><button class="btn" id="resetToday">오늘 값 지우기</button></div>
   </div>
 </div>
@@ -645,12 +643,6 @@ $('bzL').onclick = () => setBZ((P.baseZ || 0) - 0.01);
 $('bzR').onclick = () => setBZ((P.baseZ || 0) + 0.01);
 $('bz0').onclick = () => setBZ(0);
 
-$('persCopy').onclick = async () => {
-  const txt = `국궁v3 기준값: 상하=${cm(P.baseY)}cm, 좌우=${cm(P.baseZ || 0)}cm, 고기압=${Math.round(P.perHpa * 100)}cm/hPa, 저기압=${Math.round(perOf(-1) * 100)}cm/hPa, 좌우바람=${cm(P.kw)}cm/(m/s), 앞뒤바람=${cm(P.kx)}cm/(m/s)`;
-  const box = $('persCopyTxt'); box.value = txt; box.hidden = false;
-  try { await navigator.clipboard.writeText(txt); toast('기준값을 복사했습니다. Claude 대화창에 붙여 넣어 보내 주세요'); }
-  catch (e) { box.focus(); box.select(); toast('아래 글을 길게 눌러 복사해 주세요'); }
-};
 $('persBtn').onclick = () => { renderPers(); $('vPers').hidden = false; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = 'hidden'); placeNudges(); draw(); };
 function closePers(){ $('vPers').hidden = true; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = ''); draw(); }
 $('persClose').onclick = closePers;
