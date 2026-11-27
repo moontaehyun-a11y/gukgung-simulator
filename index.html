@@ -47,6 +47,8 @@ main{position:absolute;inset:var(--hh) 0 0 0;overflow:hidden}
 .wxcard b{font-size:13.5px;line-height:1.25}
 .wxcard small{font-size:11px;color:var(--ink2);line-height:1.3}
 .why{color:var(--ink2);font-size:.92em}
+.pbadge{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:16px;font-weight:900;color:#fff;line-height:1}
+.pbadge.hi{background:#d9791a}.pbadge.lo{background:#3f6fb0}.pbadge.mid{background:#9aa48a}
 .wxcard .tmp{font-size:11px;font-weight:700;color:#b5532a;line-height:1.1;white-space:nowrap}
 .panel{position:absolute;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));padding:8px 10px;max-width:620px;margin:0 auto}
 .sl{display:grid;grid-template-columns:62px 1fr 92px;gap:8px;align-items:center;margin:2px 0}
@@ -177,7 +179,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
   #vPers .sl{margin:0;grid-template-columns:62px 1fr 74px}
   #vPers input[type=range]{height:26px}
   #vPers .bzfine{margin:0 0 2px 70px}
-  #vPers .sheet{max-height:74%;padding:12px 14px}
+  #vPers .sheet{max-height:58%;padding:12px 14px}
   #vPers hr{margin:10px 0 8px !important}
 }
 #toast{position:fixed;left:50%;top:calc(var(--hh) + 74px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(31,28,24,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
@@ -468,15 +470,16 @@ function draw(){
   const botH = panel ? panel.offsetHeight * (!$('vPers').hidden ? 0.85 : S.step === 3 ? 1 : S.step === 2 ? 1 : 0.55) + 12 + nudgeRow : 12;
   const a = aim(), c0 = center0();
   // 과녁 둘레 여백: 아래로 1.6 m(짧은 화살), 위로 0.6 m, 좌우 0.9 m까지 늘 보이게
-  const mg = S.step === 3 ? { s: 0.9, b: 1.6, t: 0.6 } : { s: 0.3, b: 0.35, t: 0.35 };
+  const mg = S.step === 3 ? { s: 0.9, b: 1.6, t: 0.6 } : !$('vPers').hidden ? { s: 0.1, b: 0.15, t: 0.15 } : { s: 0.3, b: 0.35, t: 0.35 };
   const pts = [{ z: -TW / 2 - mg.s, y: -mg.b }, { z: TW / 2 + mg.s, y: TH + mg.t }, a, ...S.shots, ...(S.hits || []).slice(-12)];
   if (S.step === 3 && !finalView) pts.push(expected());
   let zmin = Math.min(...pts.map(p => p.z)) - 0.35, zmax = Math.max(...pts.map(p => p.z)) + 0.35;
   let ymin = Math.min(...pts.map(p => p.y)) - 0.3, ymax = Math.max(...pts.map(p => p.y)) + 0.35;
   const m = Math.max(Math.abs(zmin), Math.abs(zmax)); zmin = -m; zmax = m;   // 과녁을 가운데에
   const fh = Math.max(120, h - topH - botH);
-  const side = S.step === 2 ? 128 : 20;   // 표잡기에서는 좌우 버튼 자리를 비운다
-  const s = Math.min((w - side) / (zmax - zmin), fh / (ymax - ymin)) * 0.8;   // 과녁을 조금 작게 → 둘레 여유를 넓게
+  const persOpen = !$('vPers').hidden;   // 개인 기준을 맞출 때는 좌우 버튼이 숨으니 과녁을 크게
+  const side = S.step === 2 && !persOpen ? 128 : 16;   // 표잡기에서는 좌우 버튼 자리를 비운다
+  const s = Math.min((w - side) / (zmax - zmin), fh / (ymax - ymin)) * (persOpen ? 0.97 : 0.8);   // 과녁을 조금 작게 → 둘레 여유를 넓게
   const cz = 0, cyv = (ymin + ymax) / 2, oy = topH + fh / 2;
   const X = z => w / 2 + (z - cz) * s, Y = y => oy - (y - cyv) * s;
   view = { X, Y, s, box: { w, h, top: topH, bot: botH }, inv: (px, py) => ({ z: (px - w / 2) / s + cz, y: (oy - py) / s + cyv }) };
@@ -555,7 +558,8 @@ function shortWind(w){
 function renderWxCard(){
   if (T3 && !$('v3d').hidden) update3d();
   const L = S.wx, src = L ? `${(L.time || '').slice(11, 16)} ${L.range ? L.range + ' · ' : ''}${DIR16n(L.dir)}풍 ${fmt(L.v)} m/s${L.gust != null ? ` (돌풍 ${fmt(L.gust)})` : ''}` : '날씨 직접 맞추기';
-  $('wxCard').innerHTML = `${gaugeSVG(S.pressure)}<div class="t"><span class="tmp">${S.wx ? `${S.tempC}°C${S.rho ? ` · 공기 ${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : ''}` : '기온 —'}</span><b>${S.pressure} hPa</b><small>${pClass(S.pressure)}${S.pRef != null ? ` · 주변 ${Math.round(S.pRef)}` : ''}</small></div>${windSVG(S.w)}<div class="t" style="flex:1"><b>${shortWind(S.w)}</b><small>${src}</small></div>`;
+  const pe = excess(S.pressure), pb = pe > 0 ? ['고', 'hi'] : pe < 0 ? ['저', 'lo'] : ['평', 'mid'];
+  $('wxCard').innerHTML = `<span class="pbadge ${pb[1]}" title="${pClass(S.pressure)}">${pb[0]}</span>${gaugeSVG(S.pressure)}<div class="t"><span class="tmp">${S.wx ? `${S.tempC}°C${S.rho ? ` · 공기 ${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : ''}` : '기온 —'}</span><b>${S.pressure} hPa</b><small>${pClass(S.pressure)}${S.pRef != null ? ` · 주변 ${Math.round(S.pRef)}` : ''}</small></div>${windSVG(S.w)}<div class="t" style="flex:1"><b>${shortWind(S.w)}</b><small>${src}</small></div>`;
 }
 
 // ---------- 단계 전환 ----------
@@ -967,7 +971,7 @@ $('bz0').onclick = () => setBZ(0);
 // 상하 기준 미세 조정: 1 cm / 10 cm씩
 function setBY(v){ P.baseY = Math.round(clamp(v, -3, 8) * 100) / 100; saveP(); renderPers(); syncSliders(); draw(); }
 [['byD10', -0.10], ['byD', -0.01], ['byU', 0.01], ['byU10', 0.10]].forEach(([id, d]) => $(id).onclick = () => setBY(P.baseY + d));
-$('persBtn').onclick = () => { renderPers(); $('vPers').hidden = false; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = 'hidden'); placeNudges(); draw(); };
+$('persBtn').onclick = () => { renderPers(); $('vPers').hidden = false; $('windSign').classList.remove('on'); $('windSign').hidden = true; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = 'hidden'); placeNudges(); draw(); };
 function closePers(){ $('vPers').hidden = true; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = ''); draw();  window.tutAfterPers && window.tutAfterPers(); }
 $('persClose').onclick = closePers;
 
