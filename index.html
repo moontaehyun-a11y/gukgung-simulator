@@ -193,7 +193,14 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 #tut .card .t{font-size:18px;font-weight:800;color:#c8281f;margin-bottom:6px}
 #tut .card .s{font-size:14px;line-height:1.55;color:var(--ink)}
 #tut .card .row{margin-top:12px}
-@media (prefers-reduced-motion:reduce){#tut .hole,#tut .arw{animation:none}}
+#tut .dim{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;display:none}
+#tut.multi .dim{display:block}
+#tut.multi .hole,#tut.multi .arw{display:none}
+#tut .ring{position:fixed;border-radius:12px;box-shadow:0 0 0 3px #e0352b;pointer-events:none;animation:ringP2 1.2s ease-in-out infinite}
+@keyframes ringP2{50%{box-shadow:0 0 0 6px #e0352b}}
+#tut.multi .card{width:min(250px,calc(100% - 130px))}
+#tut.multi .card .t{font-size:15.5px;white-space:nowrap}#tut.multi .card .s{font-size:13px}
+@media (prefers-reduced-motion:reduce){#tut .hole,#tut .arw,#tut .ring{animation:none}}
 #vPers .perstut{border:2px solid #e0352b;background:#fff3f1;border-radius:10px;padding:9px 11px;margin:2px 0 8px}
 #vPers .perstut .t{font-size:14px;font-weight:800;color:#c8281f}
 #vPers .perstut .s{font-size:12.5px;line-height:1.5;margin:3px 0 7px}
@@ -207,6 +214,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 <!-- 인트로: 앱을 열 때 잠깐 (누르면 바로 넘어감) -->
 <div id="tut" hidden>
   <div class="catch"></div>
+  <svg class="dim" aria-hidden="true"><path fill="rgba(20,16,12,.55)" fill-rule="evenodd"/></svg>
   <div class="hole" role="button" aria-label="개인 기준 열기"></div>
   <div class="arw"><svg viewBox="0 0 46 78" width="46" height="78" aria-hidden="true"><path d="M23 74 V18" stroke="#e0352b" stroke-width="8" stroke-linecap="round" fill="none"/><path d="M4 26 L23 4 L42 26 Z" fill="#e0352b" stroke="#e0352b" stroke-width="4" stroke-linejoin="round"/></svg></div>
   <div class="card"><div class="t"></div><div class="s"></div><div class="row"><button class="btn red grow" id="tutGo"></button><button class="btn" id="tutLater"></button></div></div>
@@ -1440,6 +1448,20 @@ $('pages').addEventListener('pointerup', e => {
   let cur = null;
   const place = () => {
     if (T.hidden || !cur) return;
+    T.classList.toggle('multi', !!cur.els); T.querySelectorAll('.ring').forEach(x => x.remove());
+    if (cur.els) {
+      const vw = innerWidth, vh = innerHeight; let d = `M0 0H${vw}V${vh}H0Z`;
+      cur.els.forEach(el => {
+        const r = el.getBoundingClientRect(), x = r.left - 4, y = r.top - 4, w = r.width + 8, h = r.height + 8, k = 12;
+        d += `M${x + k} ${y}H${x + w - k}Q${x + w} ${y} ${x + w} ${y + k}V${y + h - k}Q${x + w} ${y + h} ${x + w - k} ${y + h}H${x + k}Q${x} ${y + h} ${x} ${y + h - k}V${y + k}Q${x} ${y} ${x + k} ${y}Z`;
+        const g = document.createElement('div'); g.className = 'ring'; Object.assign(g.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' }); T.appendChild(g);
+      });
+      T.querySelector('.dim path').setAttribute('d', d);
+      const u = cur.els[0].getBoundingClientRect(), dn = cur.els[1].getBoundingClientRect();
+      const cw = card.offsetWidth, ch = card.offsetHeight;
+      card.style.left = (vw / 2 - cw / 2) + 'px'; card.style.top = Math.max(8, (u.bottom + dn.top) / 2 - ch / 2) + 'px';
+      return;
+    }
     const r = cur.el.getBoundingClientRect(), vw = innerWidth, vh = (window.visualViewport && visualViewport.height) || innerHeight;
     const down = r.top + r.height / 2 > vh / 2; T.classList.toggle('down', down);
     Object.assign(hole.style, { left: (r.left - 4) + 'px', top: (r.top - 4) + 'px', width: (r.width + 8) + 'px', height: (r.height + 8) + 'px' });
@@ -1466,8 +1488,8 @@ $('pages').addEventListener('pointerup', e => {
   const step2 = () => spot({ el: $('wxBtn'), title: '현재 장소의 날씨를 자동스캔하세요',
     body: '<b>📍 날씨</b>를 누르면 지금 있는 곳의 기압과 바람을 읽어 와서 표에 바로 넣습니다.',
     go: '📍 날씨 읽기', onGo: () => { chain = 2; $('wxBtn').click(); }, onLater: () => { chain = 0; } });
-  const step3 = () => spot({ el: $('pickBtn'), title: '현장과 다르면 직접 고치세요',
-    body: '날씨가 들어갔습니다. 현장 실제 상황과 다른 경우에는 <b>☝ 직접</b> 버튼을 눌러서 바람 위치를 수정하세요.<br>켠 다음 과녁에서 표를 놓을 자리를 누르거나 끌면 됩니다.',
+  const step3 = () => spot({ els: ['nU', 'nD', 'nL', 'nR'].map($), title: '현장과 다르면 바람 버튼으로',
+    body: '날씨가 들어갔습니다. 현장 실제 바람과 다르면 화면 <b>상하좌우의 바람 버튼</b>을 눌러 바람 위치를 고치세요.<br>바람이 불어오는 쪽 버튼을 누르면 됩니다.',
     go: '알겠어요', later: '' });
   window.showTut = () => { chain = 0; step1(); };
   window.tutAfterPers = () => { if (chain === 1) { chain = 0; setTimeout(() => { if (T.hidden) step2(); }, 350); } };
