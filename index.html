@@ -134,6 +134,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 .windsign.on{opacity:1}
 .windsign b{font-size:15px}
 .windsign small{display:block;color:#e8dfcf;font-size:12px;margin-top:2px}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
 #toast{position:fixed;left:50%;top:calc(var(--hh) + 74px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(31,28,24,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
 #toast.on{opacity:1}
 @media (max-width:480px){.steps span{padding:4px 7px;font-size:11.5px}header h1{display:none}.sl{grid-template-columns:54px 1fr 84px}header .ic{width:35px;height:38px;font-size:15px}header{gap:4px;padding:0 6px}.wxcard small{display:none}}
@@ -332,9 +333,9 @@ function draw(){
   const cz = 0, cyv = (ymin + ymax) / 2, oy = topH + fh / 2;
   const X = z => w / 2 + (z - cz) * s, Y = y => oy - (y - cyv) * s;
   view = { X, Y, s, box: { w, h, top: topH, bot: botH }, inv: (px, py) => ({ z: (px - w / 2) / s + cz, y: (oy - py) / s + cyv }) };
-  // 하늘·땅
-  g.fillStyle = '#e9e4d8'; g.fillRect(0, 0, w, h);
-  g.strokeStyle = 'rgba(33,28,24,.06)'; g.lineWidth = 1;
+  // 하늘·땅: 기압에 따라 하늘색·해·구름을 바꾼다 (고기압 → 맑고 쨍쨍, 저기압 → 흐리고 구름·비)
+  drawSky(g, w, Y(0));
+  g.strokeStyle = 'rgba(33,28,24,.05)'; g.lineWidth = 1;
   for (let z = Math.floor(zmin - 5); z <= zmax + 5; z += 0.5) { g.beginPath(); g.moveTo(X(z), 0); g.lineTo(X(z), h); g.stroke(); }
   for (let y = -10; y <= 15; y += 0.5) { g.beginPath(); g.moveTo(0, Y(y)); g.lineTo(w, Y(y)); g.stroke(); }
   g.fillStyle = '#a3b38a'; g.fillRect(0, Y(0), w, h - Y(0));
@@ -430,6 +431,83 @@ function onSlide(){
 $('wind0').onclick = () => { S.w = { x: 0, z: 0 }; saveS(); syncSliders(); renderWxCard(); draw(); };
 $('guideBtn').onclick = () => { guide = !guide; try { localStorage.setItem('gukgung3-guide', guide ? '1' : '0'); } catch (e) {} $('guideBtn').style.opacity = guide ? 1 : 0.4; draw(); };
 
+
+
+// ---------- 날씨 그림: 하늘(기압) + 바람결·비(움직임) ----------
+const lerpC = (a, b, k) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',')})`;
+function drawSky(g, w, groundY){
+  const ex = excess(S.pressure), f = clamp(ex / 20, -1, 1);
+  const top = f >= 0 ? lerpC([205, 221, 232], [120, 182, 236], f) : lerpC([205, 221, 232], [128, 136, 145], -f);
+  const bot = f >= 0 ? lerpC([236, 231, 220], [226, 239, 248], f) : lerpC([236, 231, 220], [196, 199, 201], -f);
+  const gr = g.createLinearGradient(0, 0, 0, Math.max(40, groundY)); gr.addColorStop(0, top); gr.addColorStop(1, bot);
+  g.fillStyle = gr; g.fillRect(0, 0, w, Math.max(0, groundY) + 1);
+  g.fillStyle = f < -0.3 ? '#8f9c80' : '#a3b38a'; g.fillRect(0, groundY, w, 4000);
+  // 해: 고기압일수록 크고 빛살이 강하게, 평기압은 은은하게, 저기압이면 숨음
+  if (f > -0.15) {
+    const sx = 46, sy = 44, k = Math.max(0, f), R = 16 + k * 8;
+    const halo = g.createRadialGradient(sx, sy, R * 0.6, sx, sy, R * (3 + k * 3));
+    halo.addColorStop(0, `rgba(255,214,90,${0.45 + k * 0.35})`); halo.addColorStop(1, 'rgba(255,214,90,0)');
+    g.fillStyle = halo; g.beginPath(); g.arc(sx, sy, R * (3 + k * 3), 0, Math.PI * 2); g.fill();
+    if (k > 0.05) { g.strokeStyle = `rgba(255,190,40,${0.35 + k * 0.45})`; g.lineWidth = 2.5; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.beginPath(); g.moveTo(sx + Math.cos(a) * (R + 5), sy + Math.sin(a) * (R + 5)); g.lineTo(sx + Math.cos(a) * (R + 12 + k * 14), sy + Math.sin(a) * (R + 12 + k * 14)); g.stroke(); } }
+    g.fillStyle = f > 0 ? '#ffc93a' : '#ffe08a'; g.beginPath(); g.arc(sx, sy, R, 0, Math.PI * 2); g.fill();
+  }
+  // 구름: 평기압 2개(옅게), 저기압으로 갈수록 많고 짙게. 고기압은 구름 없음
+  const n = f > 0.05 ? 0 : f > -0.05 ? 2 : Math.round(3 + -f * 6), dark = Math.max(0, -f);
+  const seeds = [[0.72, 0.10, 1], [0.30, 0.16, 0.8], [0.52, 0.06, 1.2], [0.12, 0.08, 0.9], [0.88, 0.2, 0.85], [0.40, 0.25, 1.1], [0.64, 0.28, 0.9], [0.05, 0.22, 1], [0.95, 0.06, 1]];
+  for (let i = 0; i < n; i++) {
+    const [fx, fy, sc] = seeds[i % seeds.length], cx = fx * w, cy = 18 + fy * Math.max(80, groundY * 0.55), s = (22 + dark * 10) * sc;
+    const c = Math.round(250 - dark * 120);
+    g.fillStyle = `rgba(${c},${c},${c + 4},${0.55 + dark * 0.35})`;
+    [[0, 0, 1], [-1, 0.25, 0.75], [1, 0.25, 0.8], [-0.45, -0.35, 0.8], [0.5, -0.3, 0.7]].forEach(([dx, dy, r]) => { g.beginPath(); g.arc(cx + dx * s * 1.1, cy + dy * s, s * r, 0, Math.PI * 2); g.fill(); });
+  }
+}
+// 움직이는 바람결·빗줄기: 과녁 그림 위 얇은 투명 판에 그린다 (누르기는 아래로 통과)
+const fx = document.createElement('canvas'); fx.id = 'fx'; $('pg1').insertBefore(fx, cv.nextSibling);
+const FXP = Array.from({ length: 46 }, () => ({ x: Math.random(), y: Math.random(), s: 0.6 + Math.random() * 0.8, k: Math.random() }));
+const RAIN = Array.from({ length: 160 }, () => ({ x: Math.random(), y: Math.random(), k: 0.6 + Math.random() * 0.6 }));
+let fxLast = 0;
+function fxLoop(now){
+  requestAnimationFrame(fxLoop);
+  const run = curPage === 0 && $('v3d').hidden && !document.hidden;
+  const r = fx.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1), W = r.width, H = r.height;
+  if (fx.width !== Math.round(W * dpr) || fx.height !== Math.round(H * dpr)) { fx.width = Math.round(W * dpr); fx.height = Math.round(H * dpr); }
+  const g = fx.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  if (!run) { fxLast = now; return; }
+  const dt = Math.min(0.05, (now - (fxLast || now)) / 1000); fxLast = now;
+  const w = S.w, sp = Math.hypot(w.x, w.z), ex = excess(S.pressure);
+  // 바람결: 옆바람은 옆으로 흐르고, 맞바람은 화면 가운데에서 바깥(사대 쪽)으로, 뒷바람은 가운데(과녁 쪽)로 빨려 들어감
+  if (sp >= 0.2) {
+    const cx = W / 2, cy = H * 0.42, a = Math.min(0.42, 0.12 + sp * 0.05);
+    g.lineCap = 'round';
+    FXP.forEach(p => {
+      let px = p.x * W, py = p.y * H;
+      const rx = px - cx, ry = py - cy, rr = Math.hypot(rx, ry) || 1;
+      const vx = w.z * 26 * p.s + (-w.x) * 9 * p.s * rx / rr, vy = (-w.x) * 9 * p.s * ry / rr + Math.sin(now / 700 + p.k * 6) * 4;
+      px += vx * dt; py += vy * dt;
+      if (px > W + 30) px -= W + 60; if (px < -30) px += W + 60; if (py > H + 30) py -= H + 60; if (py < -30) py += H + 60;
+      if (w.x > 0 && rr < 30) { px = Math.random() * W; py = Math.random() < 0.5 ? -20 : H + 20; }   // 뒷바람: 가운데로 사라지면 가장자리에서 다시
+      if (w.x < 0 && Math.abs(w.z) < 0.5 && (px < -25 || px > W + 25 || py < -25 || py > H + 25)) { px = cx + (Math.random() - 0.5) * 60; py = cy + (Math.random() - 0.5) * 60; }
+      p.x = px / W; p.y = py / H;
+      const vn = Math.hypot(vx, vy) || 1, L = 14 + sp * 5 * p.s, ux = vx / vn, uy = vy / vn, bend = Math.sin(now / 500 + p.k * 9) * 4;
+      g.strokeStyle = `rgba(255,255,255,${a})`; g.lineWidth = 1.6 + p.s;
+      g.beginPath(); g.moveTo(px - ux * L, py - uy * L); g.quadraticCurveTo(px - ux * L / 2 - uy * bend, py - uy * L / 2 + ux * bend, px, py); g.stroke();
+      g.strokeStyle = `rgba(60,90,130,${a * 0.5})`; g.lineWidth = 0.8;
+      g.beginPath(); g.moveTo(px - ux * L, py - uy * L + 1.5); g.quadraticCurveTo(px - ux * L / 2 - uy * bend, py - uy * L / 2 + ux * bend + 1.5, px, py + 1.5); g.stroke();
+    });
+  }
+  // 비: 저기압이 깊어질수록 많고 굵게, 옆바람만큼 기울어짐
+  if (ex <= -5) {
+    const lvl = clamp((-ex - 5) / 20, 0, 1), cnt = Math.round(40 + lvl * 120), slant = clamp(w.z * 0.08, -0.6, 0.6);
+    g.strokeStyle = `rgba(70,95,125,${0.28 + lvl * 0.25})`; g.lineWidth = 1 + lvl;
+    for (let i = 0; i < cnt; i++) {
+      const d = RAIN[i]; d.y += (0.9 + lvl * 0.6) * d.k * dt; d.x += slant * d.k * dt * 0.9;
+      if (d.y > 1.02) { d.y -= 1.05; d.x = Math.random(); } if (d.x > 1.02) d.x -= 1.04; if (d.x < -0.02) d.x += 1.04;
+      const x = d.x * W, y = d.y * H, L = 10 + lvl * 8;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x - slant * L, y - L); g.stroke();
+    }
+  }
+}
+requestAnimationFrame(fxLoop);
 
 // ---------- 과녁 상하좌우 바람 버튼 ----------
 // 버튼 화살표 = 바람이 불어 가는 방향 (맞바람 ▼, 뒷바람 ▲, 왼쪽바람 ▶, 오른쪽바람 ◀). 버튼 자리는 표가 옮겨 가는 쪽
