@@ -478,7 +478,7 @@ function fxLoop(now){
   const w = S.w, sp = Math.hypot(w.x, w.z), ex = excess(S.pressure);
   // 바람결: 바람이 불어 가는 방향으로 흐른다 (맞바람 ↓, 뒷바람 ↑, 왼쪽바람 →, 오른쪽바람 ←)
   if (sp >= 0.2) {
-    const a = Math.min(0.8, 0.38 + sp * 0.08) * 0.5;   // 전보다 절반 진하기
+    const a = Math.min(0.8, 0.38 + sp * 0.08) * 0.25;   // 처음보다 1/4 진하기 (옅게)
     g.lineCap = 'round';
     FXP.forEach(p => {
       let px = p.x * W, py = p.y * H;
@@ -503,7 +503,7 @@ function fxLoop(now){
       g.lineWidth = 2 + lvl * 1.5; g.lineCap = 'round'; g.lineJoin = 'round';
       for (let i = 0; i < n; i++) {
         const ph = ((now / 1000) * spd / H + i / n) % 1, y = ph * H, x0 = ((i * 0.37) % 1) * W * 0.6 + W * 0.05, wd = W * (0.28 + lvl * 0.12), dp = 10 + lvl * 8;
-        const al = (0.16 + lvl * 0.22) * Math.sin(ph * Math.PI);
+        const al = (0.16 + lvl * 0.22) * Math.sin(ph * Math.PI) * 0.5;
         g.strokeStyle = `rgba(181,101,29,${al})`;
         for (let k = 0; k < 2; k++) { const yy = y + k * (dp + 4); g.beginPath(); g.moveTo(x0, yy); g.lineTo(x0 + wd / 2, yy + dp); g.lineTo(x0 + wd, yy); g.stroke(); }
       }
@@ -512,7 +512,7 @@ function fxLoop(now){
       for (let i = 0; i < n; i++) {
         const d = RAIN[(i * 7) % RAIN.length], ph = ((now / 1000) * (0.12 + lvl * 0.12) * d.k + d.x * 3) % 1;
         const x = (d.x * W + Math.sin(now / 600 + i) * 6) % W, y = H - ph * H, r = 2 + d.k * 3 + lvl * 2;
-        g.strokeStyle = `rgba(47,95,143,${(0.18 + lvl * 0.25) * Math.sin(ph * Math.PI)})`; g.lineWidth = 1.5;
+        g.strokeStyle = `rgba(47,95,143,${(0.18 + lvl * 0.25) * Math.sin(ph * Math.PI) * 0.5})`; g.lineWidth = 1.5;
         g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
         g.beginPath(); g.moveTo(x, y + r + 2); g.lineTo(x, y + r + 8 + lvl * 6); g.stroke();
       }
