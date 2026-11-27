@@ -1624,7 +1624,7 @@ $('pages').addEventListener('pointerup', e => {
 $('askNo').onclick = () => { $('vAsk').hidden = true; toast('날씨 값 그대로 갑니다'); };
 $('askYes').onclick = () => {
   $('vAsk').hidden = true; const e = excess(S.pressure);
-  if (e) window.spotWind(`${e > 0 ? '고기압' : '저기압'}: 전단·난류 가능성 큼`,
+  if (e) window.spotWind('고·저기압 난류 가능성 큼',
     '높이마다 풍향이 다른 <b>바람 전단</b>과, 순간 풍향이 바뀌는 <b>난류</b>가 생겼을 가능성이 큽니다.<br>상하좌우 바람 버튼으로 현장 바람에 맞추세요.');
   else window.spotWind('평기압: 지형 바람일 수 있음',
     '예보는 넓은 지역 평균이라 산·골짜기·건물에 따라 활터 바람이 달라집니다.<br>상하좌우 바람 버튼으로 현장 바람에 맞추세요.');
