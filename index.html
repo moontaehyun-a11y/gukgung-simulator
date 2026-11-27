@@ -495,6 +495,29 @@ function fxLoop(now){
       g.fillStyle = `rgba(255,255,255,${a})`; g.beginPath(); g.moveTo(px + ux * 5, py + uy * 5); g.lineTo(px - ux * 3 - uy * 3.5, py - uy * 3 + ux * 3.5); g.lineTo(px - ux * 3 + uy * 3.5, py - uy * 3 - ux * 3.5); g.closePath(); g.fill();
     });
   }
+  // 기압풍: 누르는 바람(고기압)은 넓은 ︾ 물결이 위에서 천천히 내려앉고, 올리는 바람(저기압)은 공기 방울이 땅에서 피어올라감
+  if (ex !== 0) {
+    const lvl = clamp(Math.abs(ex) / 20, 0.15, 1);
+    if (ex > 0) {
+      const n = Math.round(3 + lvl * 5), spd = 18 + lvl * 22;
+      g.lineWidth = 2 + lvl * 1.5; g.lineCap = 'round'; g.lineJoin = 'round';
+      for (let i = 0; i < n; i++) {
+        const ph = ((now / 1000) * spd / H + i / n) % 1, y = ph * H, x0 = ((i * 0.37) % 1) * W * 0.6 + W * 0.05, wd = W * (0.28 + lvl * 0.12), dp = 10 + lvl * 8;
+        const al = (0.16 + lvl * 0.22) * Math.sin(ph * Math.PI);
+        g.strokeStyle = `rgba(181,101,29,${al})`;
+        for (let k = 0; k < 2; k++) { const yy = y + k * (dp + 4); g.beginPath(); g.moveTo(x0, yy); g.lineTo(x0 + wd / 2, yy + dp); g.lineTo(x0 + wd, yy); g.stroke(); }
+      }
+    } else {
+      const n = Math.round(10 + lvl * 26);
+      for (let i = 0; i < n; i++) {
+        const d = RAIN[(i * 7) % RAIN.length], ph = ((now / 1000) * (0.12 + lvl * 0.12) * d.k + d.x * 3) % 1;
+        const x = (d.x * W + Math.sin(now / 600 + i) * 6) % W, y = H - ph * H, r = 2 + d.k * 3 + lvl * 2;
+        g.strokeStyle = `rgba(47,95,143,${(0.18 + lvl * 0.25) * Math.sin(ph * Math.PI)})`; g.lineWidth = 1.5;
+        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
+        g.beginPath(); g.moveTo(x, y + r + 2); g.lineTo(x, y + r + 8 + lvl * 6); g.stroke();
+      }
+    }
+  }
   // 비: 저기압이 깊어질수록 많고 굵게, 옆바람만큼 기울어짐
   if (ex <= -5) {
     const lvl = clamp((-ex - 5) / 20, 0, 1), cnt = Math.round(40 + lvl * 120), slant = clamp(w.z * 0.08, -0.6, 0.6);
