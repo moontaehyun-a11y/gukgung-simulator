@@ -46,6 +46,7 @@ main{position:absolute;inset:var(--hh) 0 0 0;overflow:hidden}
 .wxcard .t b,.wxcard .t small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wxcard b{font-size:13.5px;line-height:1.25}
 .wxcard small{font-size:11px;color:var(--ink2);line-height:1.3}
+.why{color:var(--ink2);font-size:.92em}
 .wxcard .tmp{font-size:11px;font-weight:700;color:#b5532a;line-height:1.1;white-space:nowrap}
 .panel{position:absolute;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));padding:8px 10px;max-width:620px;margin:0 auto}
 .sl{display:grid;grid-template-columns:62px 1fr 92px;gap:8px;align-items:center;margin:2px 0}
@@ -554,7 +555,7 @@ function shortWind(w){
 function renderWxCard(){
   if (T3 && !$('v3d').hidden) update3d();
   const L = S.wx, src = L ? `${(L.time || '').slice(11, 16)} ${L.range ? L.range + ' · ' : ''}${DIR16n(L.dir)}풍 ${fmt(L.v)} m/s${L.gust != null ? ` (돌풍 ${fmt(L.gust)})` : ''}` : '날씨 직접 맞추기';
-  $('wxCard').innerHTML = `${gaugeSVG(S.pressure)}<div class="t"><span class="tmp">${S.wx ? `${S.tempC}°C` : '기온 —'}</span><b>${S.pressure} hPa</b><small>${pClass(S.pressure)}${S.pRef != null ? ` · 주변 ${Math.round(S.pRef)}` : ''}</small></div>${windSVG(S.w)}<div class="t" style="flex:1"><b>${shortWind(S.w)}</b><small>${src}</small></div>`;
+  $('wxCard').innerHTML = `${gaugeSVG(S.pressure)}<div class="t"><span class="tmp">${S.wx ? `${S.tempC}°C${S.rho ? ` · 공기 ${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : ''}` : '기온 —'}</span><b>${S.pressure} hPa</b><small>${pClass(S.pressure)}${S.pRef != null ? ` · 주변 ${Math.round(S.pRef)}` : ''}</small></div>${windSVG(S.w)}<div class="t" style="flex:1"><b>${shortWind(S.w)}</b><small>${src}</small></div>`;
 }
 
 // ---------- 단계 전환 ----------
@@ -570,7 +571,10 @@ function syncSliders(){
   $('sP').value = S.pressure; $('oP').textContent = `${S.pressure} hPa`;
   $('sZ').value = -S.w.z; $('oZ').textContent = Math.abs(S.w.z) < 0.05 ? '0' : `${S.w.z > 0 ? '왼쪽' : '오른쪽'} ${fmt(Math.abs(S.w.z))}`;
   $('sX').value = S.w.x; $('oX').textContent = Math.abs(S.w.x) < 0.05 ? '0' : `${S.w.x < 0 ? '맞' : '순'} ${fmt(Math.abs(S.w.x))}`;
-  $('aimWords').textContent = aimWords(aim());
+  // 표가 왜 움직였는지: 기압(주변 대비)·공기 밀도·바람 몫을 따로 보여 준다
+  const ps = cm(pShift()), ds = cm(dShift()), ws = cm(-P.kx * S.w.x), sg = v => `${v > 0 ? '↑' : '↓'}${Math.abs(v)}`;
+  const why = [ps && `기압 ${sg(ps)}`, ds && `공기 ${sg(ds)}`, ws && `앞뒤바람 ${sg(ws)}`].filter(Boolean);
+  $('aimWords').innerHTML = aimWords(aim()) + (why.length ? `<span class="why"> · ${why.join(' · ')} cm</span>` : '');
 }
 function onSlide(){
   S.pressure = +$('sP').value;
@@ -1014,7 +1018,7 @@ function applyWx(wx, rg){
   const all = ranges(), it = all.find(g => g.id === rg.id); if (it) { it.used = Date.now(); saveRanges(all); }
   ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true);
   setStep(2);
-  toast(`${rg.name}: ${S.tempC}°C · ${S.pressure} hPa (${S.pRef != null ? `주변 ${Math.round(S.pRef)} → ${pClass(S.pressure)}` : '주변 비교 못함'}) · ${windWords(S.w)} 를 넣었습니다`);
+  toast(`${rg.name}: ${S.tempC}°C · ${S.pressure} hPa (${S.pRef != null ? `주변 ${Math.round(S.pRef)} → ${pClass(S.pressure)}` : '주변 비교 못함'}) · 공기 ${S.rho ? `${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : '—'} · ${windWords(S.w)} 를 넣었습니다`);
   window.tutAfterWx && window.tutAfterWx();
 }
 let pend = null;
