@@ -166,7 +166,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 
       <input id="sZ" type="hidden" value="0"><input id="sX" type="hidden" value="0"><output id="oZ" hidden></output><output id="oX" hidden></output>
       <div class="row hitrow" id="hitRow"></div>
-      <div class="row"><span class="grow hint" id="aimWords"></span><button class="btn tog" id="guideBtn">〰 안내선</button><button class="btn tog" id="wind0">바람 0</button></div>
+      <div class="row"><span class="grow hint" id="aimWords"></span><button class="btn tog" id="pickBtn" title="표를 손가락으로 직접 놓기">☝ 직접</button><button class="btn tog" id="guideBtn">〰 안내선</button><button class="btn tog" id="wind0">바람 0</button></div>
     </div>
 
     <!-- ③ 설정한 표로 쏘고 확인 -->
@@ -625,10 +625,25 @@ function hitWords(m){
   if (Math.abs(dy) >= 0.02) p.push(`${dy > 0 ? '위' : '아래'} ${cm(Math.abs(dy))} cm`);
   return p.length ? p.join(', ') : '홍심 한가운데';
 }
+
+// ☝ 직접: 켜 두면 과녁을 누르거나 끌어서 표를 그 자리에 놓는다 (그 자리에 맞는 바람 값으로 거꾸로 맞춤)
+let pickOn = false, pickDrag = false;
+function setPick(on){ pickOn = on; $('pickBtn').classList.toggle('on', on); if (on) toast('표를 놓을 자리를 누르거나 끌어 보세요. 다 되면 ☝ 직접을 다시 누르세요'); }
+$('pickBtn').onclick = () => setPick(!pickOn);
+function placeAim(e){
+  const r = cv.getBoundingClientRect(), q = view.inv(e.clientX - r.left, e.clientY - r.top), c = center0();
+  // 표 = 기준 − 간격 × 바람  →  바람 = (기준 − 표) ÷ 간격 (기압은 그대로 두고 높이는 앞뒤 바람으로)
+  S.w = { x: +clamp((c.y - q.y) / P.kx, -8, 8).toFixed(1), z: +clamp((c.z - q.z) / P.kw, -8, 8).toFixed(1) };
+  saveS(); syncSliders(); renderWxCard(); draw();
+}
+cv.addEventListener('pointerdown', e => { if (!pickOn || S.step !== 2 || !view) return; pickDrag = true; placeAim(e); }, true);
+cv.addEventListener('pointermove', e => { if (pickOn && pickDrag) placeAim(e); }, true);
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => cv.addEventListener(ev, () => { pickDrag = false; }, true));
+
 // 길게 누르기 (0.45초, 손가락을 거의 움직이지 않을 때만)
 let lp = null;
 cv.addEventListener('pointerdown', e => {
-  if (S.step !== 2 || !$('vPers').hidden) return;
+  if (S.step !== 2 || !$('vPers').hidden || pickOn) return;
   const x0 = e.clientX, y0 = e.clientY;
   lp = { x0, y0, timer: setTimeout(() => {
     if (!lp || !view) return;
@@ -1124,7 +1139,7 @@ function goPage(n){
 }
 $('pgBtn').onclick = () => goPage(curPage ? 0 : 1);
 let sw = null;
-$('pages').addEventListener('pointerdown', e => { if (e.target.closest('button,input,.sheet')) { sw = null; return; } sw = { x: e.clientX, y: e.clientY, t: Date.now() }; }, true);
+$('pages').addEventListener('pointerdown', e => { if (e.target.closest('button,input,.sheet') || (pickOn && e.target === cv)) { sw = null; return; } sw = { x: e.clientX, y: e.clientY, t: Date.now() }; }, true);
 $('pages').addEventListener('pointerup', e => {
   const s = sw; sw = null; if (!s) return;
   const dx = e.clientX - s.x, dy = e.clientY - s.y;
