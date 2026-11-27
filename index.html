@@ -1354,9 +1354,15 @@ function update3d(){
 // ---------- 습사 (옆으로 밀면 나오는 두 번째 화면) ----------
 // 관중 = 과녁판(가로 2 m × 세로 2.67 m) 안에 맞음
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-if (!Array.isArray(S.sheet) || S.sheet.length !== 9) S.sheet = blankSheet();
+if (!Array.isArray(S.sheet) || S.sheet.length < 9) S.sheet = blankSheet();
+// 9순을 넘기면 칸을 계속 늘린다: 마지막 줄에 기록이 하나라도 있으면 빈 줄을 하나 더 붙이고, 뒤쪽 빈 줄은 9순까지 줄인다
+function fitSheet(){
+  const sh = S.sheet, used = r => sh[r] && sh[r].some(Boolean);
+  while (sh.length > 9 && !used(sh.length - 1) && !used(sh.length - 2)) sh.pop();
+  if (used(sh.length - 1)) sh.push(Array(5).fill(null));
+}
 const isHit = p => Math.abs(p.z) <= TW / 2 && p.y >= 0 && p.y <= TH;
-function nextCell(){ for (let r = 0; r < 9; r++) for (let a = 0; a < 5; a++) if (!S.sheet[r][a]) return [r, a]; return null; }
+function nextCell(){ fitSheet(); for (let r = 0; r < S.sheet.length; r++) for (let a = 0; a < 5; a++) if (!S.sheet[r][a]) return [r, a]; return null; }
 // 칸 그림: 가운데에 작은 과녁, 둘레는 빠진 방향을 찍는 여백 (칸 전체 = 좌우 5 m × 위아래 5.6 m)
 const CV = { W: 50, H: 60, SZ: 5, SY: 5.6 }; CV.Y0 = TH / 2 - CV.SY / 2;
 const cX = z => CV.W / 2 + z / CV.SZ * CV.W, cY = y => CV.H - (y - CV.Y0) / CV.SY * CV.H;
@@ -1385,7 +1391,7 @@ function dropHit(c){ if (c && c.t && !c.manual) { const i = (S.hits || []).findI
 function renderSheet(){
   const dt = new Date(S.date + 'T00:00:00');
   $('sjDate').textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일 습사`;
-  let hits = 0, shots = 0, misses = 0, missHits = 0; const nc = nextCell();
+  fitSheet(); let hits = 0, shots = 0, misses = 0, missHits = 0; const nc = nextCell();
   let h = '<tr><th style="width:13%">순</th>' + [1, 2, 3, 4, 5].map(i => `<th>${i}시</th>`).join('') + '<th style="width:13%">중</th></tr>';
   S.sheet.forEach((row, r) => {
     let n = 0, m = 0;
@@ -1436,7 +1442,7 @@ $('sjTbl').addEventListener('pointermove', e => { if (lpCell && Math.hypot(e.cli
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => $('sjTbl').addEventListener(ev, () => { if (lpCell) { clearTimeout(lpCell.timer); lpCell = null; } }));
 $('sjTbl').addEventListener('contextmenu', e => e.preventDefault());
 $('sjUndo').onclick = () => {
-  for (let r = 8; r >= 0; r--) for (let a = 4; a >= 0; a--) { const c = S.sheet[r][a]; if (c) { S.sheet[r][a] = null; if (c.t) { const i = (S.hits || []).findIndex(p => p.t === c.t); if (i >= 0) S.hits.splice(i, 1); } saveS(); renderSheet(); renderHits(); draw(); return; } }
+  for (let r = S.sheet.length - 1; r >= 0; r--) for (let a = 4; a >= 0; a--) { const c = S.sheet[r][a]; if (c) { S.sheet[r][a] = null; if (c.t) { const i = (S.hits || []).findIndex(p => p.t === c.t); if (i >= 0) S.hits.splice(i, 1); } saveS(); renderSheet(); renderHits(); draw(); return; } }
 };
 let sjArm = null;
 $('sjClr').onclick = () => {
