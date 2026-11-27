@@ -179,7 +179,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 <header>
   <div class="wxcard" id="wxCard"></div>
   <button class="ic" id="b3d" aria-label="바람 3D 보기" title="바람 3D 보기" style="font-size:13px;font-weight:800">3D</button>
-  <button class="ic" id="pgBtn" aria-label="표잡기·시지 바꾸기" title="표잡기 ↔ 시지" style="font-size:12px;font-weight:800;padding:0">시지</button>
+  <button class="ic" id="pgBtn" aria-label="표잡기·습사 바꾸기" title="표잡기 ↔ 습사" style="font-size:12px;font-weight:800;padding:0">습사</button>
   <button class="ic" id="persBtn" aria-label="개인 기준" title="개인 기준">⚙</button>
 </header>
 <main>
@@ -210,15 +210,15 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
       <div id="chkBody"></div>
     </div>
   </div>
-  <!-- 옆으로 밀면 나오는 시지 -->
+  <!-- 옆으로 밀면 나오는 습사 -->
   <div class="page" id="pg2">
     <div class="sj">
       <div class="sj-h"><b id="sjDate"></b><span class="grow"></span><span id="sjSum"></span></div>
       <table class="sjt" id="sjTbl"></table>
       <div class="hint" style="margin-top:8px">과녁 화면에서 <b>맞은 자리를 길게 누르면</b> 다음 칸에 자리와 함께 들어갑니다. 칸 안의 작은 과녁에서 <b>화살이 떨어진 자리를 누르면</b> 바로 기록됩니다. 과녁 밖을 누르면 그 방향(넘음·짧음·왼쪽·오른쪽)으로 빠진 불로 표시되고, 찍힌 점을 다시 누르면 지워집니다. 자세 실수로 쏜 화살은 칸을 <b>길게 누르면 MISS</b>로 표시되어 적중률과 보정에서 빠집니다.</div>
-      <div class="row" style="margin-top:10px"><button class="btn" id="sjUndo">↶ 마지막 칸 지우기</button><span class="grow"></span><button class="btn" id="sjClr">시지 지우기</button></div>
+      <div class="row" style="margin-top:10px"><button class="btn" id="sjUndo">↶ 마지막 칸 지우기</button><span class="grow"></span><button class="btn" id="sjClr">습사 지우기</button></div>
       <div class="row" style="margin-top:10px"><button class="btn grow" id="calOpen">📅 기록 달력</button></div>
-      <div class="hint" style="margin-top:6px">시지는 기록할 때마다 이 기기에 날짜별로 자동 저장됩니다.</div>
+      <div class="hint" style="margin-top:6px">습사는 기록할 때마다 이 기기에 날짜별로 자동 저장됩니다.</div>
     </div>
   </div>
   </div></div>
@@ -809,7 +809,7 @@ cv.addEventListener('pointerdown', e => {
     S.hits = S.hits || [];
     const hp = { z: +q.z.toFixed(3), y: +q.y.toFixed(3), aim: a, w: { ...S.w }, p: S.pressure, kw: P.kw, kx: P.kx, perHpa: P.perHpa, perHpaLo: perOf(-1), t: Date.now() };
     S.hits.push(hp);
-    const nc = nextCell(); if (nc) { S.sheet[nc[0]][nc[1]] = { z: hp.z, y: hp.y, hit: isHit(hp), t: hp.t }; toast(`${nc[0] + 1}순 ${nc[1] + 1}시 ${isHit(hp) ? '관중 ○' : '불 ×'} — 옆으로 밀면 시지`); }
+    const nc = nextCell(); if (nc) { S.sheet[nc[0]][nc[1]] = { z: hp.z, y: hp.y, hit: isHit(hp), t: hp.t }; toast(`${nc[0] + 1}순 ${nc[1] + 1}시 ${isHit(hp) ? '관중 ○' : '불 ×'} — 옆으로 밀면 습사 기록`); }
     renderSheet();
     saveS(); try { navigator.vibrate && navigator.vibrate(25); } catch (er) {}
     renderHits(); draw(); lp = null;
@@ -1198,7 +1198,7 @@ function update3d(){
 }
 
 
-// ---------- 시지 (옆으로 밀면 나오는 두 번째 화면) ----------
+// ---------- 습사 (옆으로 밀면 나오는 두 번째 화면) ----------
 // 관중 = 과녁판(가로 2 m × 세로 2.67 m) 안에 맞음
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 if (!Array.isArray(S.sheet) || S.sheet.length !== 9) S.sheet = blankSheet();
@@ -1231,7 +1231,7 @@ function cellSVG(c){
 function dropHit(c){ if (c && c.t && !c.manual) { const i = (S.hits || []).findIndex(p => p.t === c.t); if (i >= 0) S.hits.splice(i, 1); } }
 function renderSheet(){
   const dt = new Date(S.date + 'T00:00:00');
-  $('sjDate').textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일 시지`;
+  $('sjDate').textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일 습사`;
   let hits = 0, shots = 0, misses = 0, missHits = 0; const nc = nextCell();
   let h = '<tr><th style="width:13%">순</th>' + [1, 2, 3, 4, 5].map(i => `<th>${i}시</th>`).join('') + '<th style="width:13%">중</th></tr>';
   S.sheet.forEach((row, r) => {
@@ -1244,7 +1244,7 @@ function renderSheet(){
     h += `<tr class="${nc && nc[0] === r ? 'cur' : ''}"><th>${r + 1}</th>${cells}<td class="n${n === 5 ? ' full' : ''}">${m ? n : ''}</td></tr>`;
   });
   $('sjTbl').innerHTML = h;
-  logSave3();   // 기록할 때마다 오늘 시지를 달력에 자동 저장
+  logSave3();   // 기록할 때마다 오늘 습사를 달력에 자동 저장
   const vs = shots - misses, vh = hits - missHits;
   $('sjSum').innerHTML = shots ? `<b>${hits}중</b> / ${shots}시${vs ? ` · ${Math.round(vh / vs * 100)}%` : ''}${misses ? ` <small>(MISS ${misses}발 제외)</small>` : ''}` : '아직 기록 없음';
   // 칸 안을 누른 자리 = 화살이 떨어진 자리 (과녁 안이면 관중, 밖이면 그 방향으로 불). 찍힌 점을 다시 누르면 지움
@@ -1262,10 +1262,10 @@ function renderSheet(){
     S.sheet[r][a] = { z: q.z, y: q.y, hit: isHit(q), t: Date.now(), manual: true };
     saveS(); renderSheet(); renderHits(); draw();
   });
-  $('pgBtn').textContent = curPage ? '표' : '시지';
+  $('pgBtn').textContent = curPage ? '표' : '습사';
 }
 
-// 자세 실수: 시지 칸을 길게 누르면 MISS 표시 (적중률·개인 기준 보정에서 뺀다). 다시 길게 누르면 해제
+// 자세 실수: 습사 칸을 길게 누르면 MISS 표시 (적중률·개인 기준 보정에서 뺀다). 다시 길게 누르면 해제
 let lpCell = null, lpCellFired = false;
 $('sjTbl').addEventListener('pointerdown', e => {
   const td = e.target.closest('td.c'); if (!td) return;
@@ -1287,11 +1287,11 @@ $('sjUndo').onclick = () => {
 };
 let sjArm = null;
 $('sjClr').onclick = () => {
-  if (!sjArm) { $('sjClr').textContent = '한 번 더 누르면 지움'; sjArm = setTimeout(() => { sjArm = null; $('sjClr').textContent = '시지 지우기'; }, 2500); return; }
-  clearTimeout(sjArm); sjArm = null; $('sjClr').textContent = '시지 지우기'; S.sheet = blankSheet(); saveS(); renderSheet(); toast('시지를 지웠습니다');
+  if (!sjArm) { $('sjClr').textContent = '한 번 더 누르면 지움'; sjArm = setTimeout(() => { sjArm = null; $('sjClr').textContent = '습사 지우기'; }, 2500); return; }
+  clearTimeout(sjArm); sjArm = null; $('sjClr').textContent = '습사 지우기'; S.sheet = blankSheet(); saveS(); renderSheet(); toast('습사를 지웠습니다');
 };
 
-// ---------- 기록 달력: 시지를 날짜별로 자동 저장 ----------
+// ---------- 기록 달력: 습사를 날짜별로 자동 저장 ----------
 const LOG3 = 'gukgung3-log';
 const logLoad3 = () => { try { const d = JSON.parse(localStorage.getItem(LOG3) || 'null'); return d && d.days ? d : { days: {} }; } catch (e) { return { days: {} }; } };
 function sheetStats(sh){ let hits = 0, shots = 0, miss = 0, mh = 0; sh.forEach(r => r.forEach(c => { if (c) { shots++; if (c.hit) hits++; if (c.miss) { miss++; if (c.hit) mh++; } } })); return { hits, shots, miss, mh }; }
@@ -1326,18 +1326,18 @@ function renderCal(){
     h += `<button class="d${e ? ' has' : ''}${k === td ? ' today' : ''}${k === calSel ? ' sel' : ''}${dow === 0 ? ' sun' : dow === 6 ? ' sat' : ''}" data-k="${k}"><span class="dn">${d}</span>${b}</button>`;
   }
   $('calGrid').innerHTML = h;
-  $('calMonth').textContent = md ? `이번 달 ${md}일 습사 · ${mh}중 / ${ms}시 (${Math.round(mh / ms * 100)}%)` : '이번 달 저장된 시지가 없습니다';
+  $('calMonth').textContent = md ? `이번 달 ${md}일 습사 · ${mh}중 / ${ms}시 (${Math.round(mh / ms * 100)}%)` : '이번 달 저장된 습사가 없습니다';
   $('calGrid').querySelectorAll('.d').forEach(b => b.onclick = () => { calSel = b.dataset.k; renderCal(); });
   const e = L.days[calSel], box = $('calDay');
-  if (!e) { box.innerHTML = `<div class="hint">${calSel ? calSel + ' — 저장된 시지가 없습니다.' : '날짜를 누르면 그날 시지가 보입니다.'}</div>`; return; }
+  if (!e) { box.innerHTML = `<div class="hint">${calSel ? calSel + ' — 저장된 습사가 없습니다.' : '날짜를 누르면 그날 습사가 보입니다.'}</div>`; return; }
   const dt = new Date(calSel + 'T00:00:00'), vs = e.shots - (e.miss || 0);
   box.innerHTML = `<div style="font-size:15px;margin:4px 0"><b>${dt.getMonth() + 1}월 ${dt.getDate()}일 (${'일월화수목금토'[dt.getDay()]})</b>${e.place ? ' · ' + e.place : ''}</div>
     <div style="margin-bottom:4px"><b style="font-size:22px;color:var(--red)">${e.hits}중</b> / ${e.shots}시${vs ? ` · ${Math.round((e.hits - (e.mh || 0)) / vs * 100)}%` : ''}${e.miss ? ` <small style="color:var(--ink2)">(MISS ${e.miss}발 제외)</small>` : ''}</div>
     <div class="hint" style="margin-bottom:6px">${e.pressure} hPa · ${windWords(e.w || { x: 0, z: 0 })}</div>
     <table class="sjt ro">${sheetTableHTML(e.sheet)}</table>
-    <div class="row" style="margin-top:8px"><span class="grow"></span><button class="btn" id="calDelB">이 날 시지 삭제</button></div>`;
+    <div class="row" style="margin-top:8px"><span class="grow"></span><button class="btn" id="calDelB">이 날 습사 삭제</button></div>`;
   $('calDelB').onclick = () => {
-    if (!calDel) { $('calDelB').textContent = '한 번 더 누르면 삭제'; calDel = setTimeout(() => { calDel = null; const b = $('calDelB'); if (b) b.textContent = '이 날 시지 삭제'; }, 2500); return; }
+    if (!calDel) { $('calDelB').textContent = '한 번 더 누르면 삭제'; calDel = setTimeout(() => { calDel = null; const b = $('calDelB'); if (b) b.textContent = '이 날 습사 삭제'; }, 2500); return; }
     clearTimeout(calDel); calDel = null; const L2 = logLoad3(); delete L2.days[calSel]; store(LOG3, L2);
     if (calSel === S.date) { S.sheet = blankSheet(); saveS(); renderSheet(); }
     renderCal();
@@ -1346,10 +1346,10 @@ function renderCal(){
 $('calOpen').onclick = openCal; $('calX').onclick = () => { $('vCal').hidden = true; };
 $('calPrev').onclick = () => { calYM.m--; if (calYM.m < 0) { calYM.m = 11; calYM.y--; } renderCal(); };
 $('calNext').onclick = () => { calYM.m++; if (calYM.m > 11) { calYM.m = 0; calYM.y++; } renderCal(); };
-// 날이 바뀌면: 지난 시지는 달력에 남기고 오늘 시지는 새로
-if (S.date !== today()) { if (S.date) { logSave3(); S.sheet = blankSheet(); S.hits = []; } S.date = today(); saveS(); }   // 날이 바뀌면 시지는 새로
+// 날이 바뀌면: 지난 습사는 달력에 남기고 오늘 습사는 새로
+if (S.date !== today()) { if (S.date) { logSave3(); S.sheet = blankSheet(); S.hits = []; } S.date = today(); saveS(); }   // 날이 바뀌면 습사는 새로
 
-// 화면 넘기기: 옆으로 밀기(스와이프) 또는 위 「시지」 버튼
+// 화면 넘기기: 옆으로 밀기(스와이프) 또는 위 「습사」 버튼
 let curPage = 0;
 function goPage(n){
   curPage = n; $('pages').style.transform = `translateX(${n ? -50 : 0}%)`;
