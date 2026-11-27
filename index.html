@@ -444,7 +444,9 @@ function draw(){
   // 상하 기준선
   g.setLineDash([5, 5]); g.strokeStyle = 'rgba(31,95,191,.55)'; g.lineWidth = 1;
   g.beginPath(); g.moveTo(X(-TW / 2 - 0.2), Y(P.baseY)); g.lineTo(X(TW / 2 + 0.2), Y(P.baseY)); g.stroke(); g.setLineDash([]);
-  if (Math.abs(P.baseZ || 0) >= 0.005) { g.strokeStyle = 'rgba(31,95,191,.8)'; g.lineWidth = 2; g.beginPath(); g.moveTo(X(P.baseZ), Y(P.baseY) - 8); g.lineTo(X(P.baseZ), Y(P.baseY) + 8); g.stroke(); }
+  // 좌우 기준선 (상하 기준선과 같은 모양, 세로)
+  g.setLineDash([5, 5]); g.strokeStyle = 'rgba(31,95,191,.55)'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(X(P.baseZ || 0), Y(TH + 0.2)); g.lineTo(X(P.baseZ || 0), Y(-0.2)); g.stroke(); g.setLineDash([]);
   // 바람 안내선: 무풍 기준 표를 중심으로 1 m/s마다 얇은 타원
   if (guide) {
     const kz = P.kw * s, kx = P.kx * s, cx = X(c0.z), cy = Y(c0.y);
