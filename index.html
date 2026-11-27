@@ -135,6 +135,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 .windsign b{font-size:15px}
 .windsign small{display:block;color:#e8dfcf;font-size:12px;margin-top:2px}
 #fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+#pAim,#pCheck{z-index:2}
 #toast{position:fixed;left:50%;top:calc(var(--hh) + 74px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(31,28,24,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
 #toast.on{opacity:1}
 @media (max-width:480px){.steps span{padding:4px 7px;font-size:11.5px}header h1{display:none}.sl{grid-template-columns:54px 1fr 84px}header .ic{width:35px;height:38px;font-size:15px}header{gap:4px;padding:0 6px}.wxcard small{display:none}}
@@ -463,7 +464,7 @@ function drawSky(g, w, groundY){
 }
 // 움직이는 바람결·빗줄기: 과녁 그림 위 얇은 투명 판에 그린다 (누르기는 아래로 통과)
 const fx = document.createElement('canvas'); fx.id = 'fx'; $('pg1').insertBefore(fx, cv.nextSibling);
-const FXP = Array.from({ length: 46 }, () => ({ x: Math.random(), y: Math.random(), s: 0.6 + Math.random() * 0.8, k: Math.random() }));
+const FXP = Array.from({ length: 64 }, () => ({ x: Math.random(), y: Math.random(), s: 0.6 + Math.random() * 0.8, k: Math.random() }));
 const RAIN = Array.from({ length: 160 }, () => ({ x: Math.random(), y: Math.random(), k: 0.6 + Math.random() * 0.6 }));
 let fxLast = 0;
 function fxLoop(now){
@@ -477,7 +478,7 @@ function fxLoop(now){
   const w = S.w, sp = Math.hypot(w.x, w.z), ex = excess(S.pressure);
   // 바람결: 옆바람은 옆으로 흐르고, 맞바람은 화면 가운데에서 바깥(사대 쪽)으로, 뒷바람은 가운데(과녁 쪽)로 빨려 들어감
   if (sp >= 0.2) {
-    const cx = W / 2, cy = H * 0.42, a = Math.min(0.42, 0.12 + sp * 0.05);
+    const cx = W / 2, cy = H * 0.42, a = Math.min(0.8, 0.38 + sp * 0.08);
     g.lineCap = 'round';
     FXP.forEach(p => {
       let px = p.x * W, py = p.y * H;
@@ -488,11 +489,12 @@ function fxLoop(now){
       if (w.x > 0 && rr < 30) { px = Math.random() * W; py = Math.random() < 0.5 ? -20 : H + 20; }   // 뒷바람: 가운데로 사라지면 가장자리에서 다시
       if (w.x < 0 && Math.abs(w.z) < 0.5 && (px < -25 || px > W + 25 || py < -25 || py > H + 25)) { px = cx + (Math.random() - 0.5) * 60; py = cy + (Math.random() - 0.5) * 60; }
       p.x = px / W; p.y = py / H;
-      const vn = Math.hypot(vx, vy) || 1, L = 14 + sp * 5 * p.s, ux = vx / vn, uy = vy / vn, bend = Math.sin(now / 500 + p.k * 9) * 4;
-      g.strokeStyle = `rgba(255,255,255,${a})`; g.lineWidth = 1.6 + p.s;
-      g.beginPath(); g.moveTo(px - ux * L, py - uy * L); g.quadraticCurveTo(px - ux * L / 2 - uy * bend, py - uy * L / 2 + ux * bend, px, py); g.stroke();
-      g.strokeStyle = `rgba(60,90,130,${a * 0.5})`; g.lineWidth = 0.8;
-      g.beginPath(); g.moveTo(px - ux * L, py - uy * L + 1.5); g.quadraticCurveTo(px - ux * L / 2 - uy * bend, py - uy * L / 2 + ux * bend + 1.5, px, py + 1.5); g.stroke();
+      const vn = Math.hypot(vx, vy) || 1, L = 22 + sp * 7 * p.s, ux = vx / vn, uy = vy / vn, bend = Math.sin(now / 500 + p.k * 9) * 4;
+      // 진한 그림자 위에 흰 결을 겹쳐 밝은 하늘·풀밭 어디서나 잘 보이게, 끝에는 작은 화살촉
+      const path = o => { g.beginPath(); g.moveTo(px - ux * L, py - uy * L + o); g.quadraticCurveTo(px - ux * L / 2 - uy * bend, py - uy * L / 2 + ux * bend + o, px, py + o); };
+      g.strokeStyle = `rgba(30,55,90,${a * 0.55})`; g.lineWidth = 3.4 + p.s; path(1); g.stroke();
+      g.strokeStyle = `rgba(255,255,255,${a})`; g.lineWidth = 2.2 + p.s; path(0); g.stroke();
+      g.fillStyle = `rgba(255,255,255,${a})`; g.beginPath(); g.moveTo(px + ux * 5, py + uy * 5); g.lineTo(px - ux * 3 - uy * 3.5, py - uy * 3 + ux * 3.5); g.lineTo(px - ux * 3 + uy * 3.5, py - uy * 3 - ux * 3.5); g.closePath(); g.fill();
     });
   }
   // 비: 저기압이 깊어질수록 많고 굵게, 옆바람만큼 기울어짐
