@@ -1035,7 +1035,9 @@ function applyWx(wx, rg){
   setStep(2);
   toast(`${rg.name}: ${S.tempC}°C · ${S.pressure} hPa (${S.pRef != null ? `주변 ${Math.round(S.pRef)} → ${pClass(S.pressure)}` : '주변 비교 못함'}) · 공기 ${S.rho ? `${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : '—'} · ${windWords(S.w)} 를 넣었습니다`);
   window.tutAfterWx && window.tutAfterWx();
-  setTimeout(() => { if (!($('tut').hidden && $('vStart').hidden && $('vDir').hidden)) return; $('askVal').textContent = `들어간 값: ${$('toast').textContent.replace(/^[^:]*:\s*/, '').replace(/\s*를 넣었습니다$/, '')}`; clearTimeout(toast.t); $('toast').classList.remove('on'); $('vAsk').hidden = false; }, 1200);
+  const askMsg = $('toast').textContent;
+  window.showAsk = () => { $('askVal').textContent = `들어간 값: ${askMsg.replace(/^[^:]*:\s*/, '').replace(/\s*를 넣었습니다$/, '')}`; clearTimeout(toast.t); $('toast').classList.remove('on'); $('vAsk').hidden = false; };
+  setTimeout(() => { if (!($('tut').hidden && $('vStart').hidden && $('vDir').hidden)) return; window.wxCardTut && window.wxCardTut() ? 0 : window.showAsk(); }, 1200);
 }
 let pend = null;
 async function readWx(){
@@ -1594,10 +1596,21 @@ $('pages').addEventListener('pointerup', e => {
   const step3 = () => spot({ els: ['nU', 'nD', 'nL', 'nR'].map($), title: '현장과 다르면 바람 버튼으로',
     body: '날씨가 들어갔습니다. 현장 실제 바람과 다르면 화면 <b>상하좌우의 바람 버튼</b>을 눌러 바람 위치를 고치세요.<br>바람이 불어오는 쪽 버튼을 누르면 됩니다.',
     go: '알겠어요', later: '' });
-  window.showTut = () => { chain = 0; step1(); };
+  window.showTut = () => { chain = 0; try { localStorage.removeItem('gukgung3-wxtut'); } catch (e) {} step1(); };
   window.tutAfterPers = () => { if (chain === 1) { chain = 0; setTimeout(() => { if (T.hidden) step2(); }, 350); } };
   window.tutAfterWx = () => { chain = 0; };
   // 날씨를 넣은 뒤 "현장 바람과 차이가 큰가요?" → 예: 까닭을 짧게 알려 주고 상하좌우 바람 버튼을 짚어 준다
+  // 처음 날씨를 넣었을 때 한 번: 왼쪽 위 날씨 칸이 무엇을 보여 주는지 짚어 준다 → 알겠어요를 누르면 현장 바람 질문
+  window.wxCardTut = () => {
+    let seenWx = false; try { seenWx = localStorage.getItem('gukgung3-wxtut') === '1'; } catch (e) {}
+    if (seenWx) return false;
+    try { localStorage.setItem('gukgung3-wxtut', '1'); } catch (e) {}
+    clearTimeout(toast.t); $('toast').classList.remove('on');
+    spot({ el: $('wxCard'), title: '왼쪽 위 날씨 칸 보는 법',
+      body: '<b>고·저·평</b> 주변보다 기압이 높은지 낮은지<br><b>바늘</b> 왼쪽 저기압 · 오른쪽 고기압<br><b>기온 · 공기 %</b> +면 공기가 무거워 덜 감<br><b>hPa</b> 지금 기압<br><b>화살표</b> 활터 기준 바람 방향·세기<br>이 값들로 표가 저절로 움직입니다.',
+      go: '알겠어요', later: '', onGo: () => window.showAsk && window.showAsk() });
+    return true;
+  };
   window.spotWind = (title, body) => spot({ els: ['nU', 'nD', 'nL', 'nR'].map($), title, body, go: '알겠어요', later: '' });
   $('persBtn').addEventListener('click', () => { if (!T.hidden && cur && cur.el === $('persBtn')) hide(); });
   $('persBtn').addEventListener('click', () => { if (!$('vPers').hidden && !seen) { seen = true; try { localStorage.setItem('gukgung3-tut', '1'); } catch (e) {} } });
