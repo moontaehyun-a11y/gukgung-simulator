@@ -152,10 +152,10 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
     <canvas id="cv"></canvas>
 
     <!-- ② 과녁 상하좌우 바람 버튼: 누를 때마다 0.2 m/s, 누르고 있으면 계속 -->
-    <button class="nudge glass" id="nU" data-k="x" data-d="-1" hidden>▲<b>맞바람</b><small id="nUv"></small></button>
-    <button class="nudge glass" id="nD" data-k="x" data-d="1" hidden>▼<b>뒷바람</b><small id="nDv"></small></button>
-    <button class="nudge glass" id="nL" data-k="z" data-d="1" hidden>◀<b>왼쪽<br>바람</b><small id="nLv"></small></button>
-    <button class="nudge glass" id="nR" data-k="z" data-d="-1" hidden>▶<b>오른쪽<br>바람</b><small id="nRv"></small></button>
+    <button class="nudge glass" id="nU" data-k="x" data-d="-1" hidden>▼<b>맞바람</b><small id="nUv"></small></button>
+    <button class="nudge glass" id="nD" data-k="x" data-d="1" hidden>▲<b>뒷바람</b><small id="nDv"></small></button>
+    <button class="nudge glass" id="nL" data-k="z" data-d="1" hidden>▶<b>왼쪽<br>바람</b><small id="nLv"></small></button>
+    <button class="nudge glass" id="nR" data-k="z" data-d="-1" hidden>◀<b>오른쪽<br>바람</b><small id="nRv"></small></button>
     <button class="nudge glass pn" id="pDn" hidden>⬇<b>누르는<br>바람</b><small id="pDnv"></small></button>
     <button class="nudge glass pn" id="pUp" hidden>⬆<b>올리는<br>바람</b><small id="pUpv"></small></button>
     <div class="windsign" id="windSign" hidden></div>
@@ -432,7 +432,7 @@ $('guideBtn').onclick = () => { guide = !guide; try { localStorage.setItem('gukg
 
 
 // ---------- 과녁 상하좌우 바람 버튼 ----------
-// ▲ 표를 위로 = 맞바람 늘리기, ▼ 아래로 = 뒷바람, ◀ 왼쪽으로 = 왼쪽에서 부는 바람, ▶ 오른쪽으로 = 오른쪽에서 부는 바람
+// 버튼 화살표 = 바람이 불어 가는 방향 (맞바람 ▼, 뒷바람 ▲, 왼쪽바람 ▶, 오른쪽바람 ◀). 버튼 자리는 표가 옮겨 가는 쪽
 const NUDGE = 0.2;
 
 // 바람 세기별 징후 (보퍼트 풍력 계급, 기상청 이름) — 바람 버튼을 누를 때 잠깐 보여 준다
