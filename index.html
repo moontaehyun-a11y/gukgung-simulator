@@ -494,7 +494,23 @@ function pStep(p, up){
   if (up) return p >= P_HI ? p + 1 : p >= P_LO ? P_HI + 1 : p + 1 >= P_LO ? 1013 : p + 1;
   return p <= P_LO ? p - 1 : p <= P_HI ? P_LO - 1 : p - 1 <= P_HI ? 1013 : p - 1;
 }
-function pNudge(up){ S.pressure = clamp(pStep(S.pressure, up), 960, 1050); saveS(); syncSliders(); renderWxCard(); draw(); }
+
+// 기압별 날씨 징후 — 기압풍 버튼을 누를 때 잠깐 보여 준다
+const P_SIGNS = [
+  [990, '강한 저기압', '비바람과 센 돌풍, 구름이 낮고 빠르게 흐름 · 화살이 많이 뜸'],
+  [1000, '저기압 발달', '흐리고 비가 올 수 있음, 바람 방향이 자주 바뀌고 돌풍 · 화살이 더 나감'],
+  [P_LO, '약한 저기압', '구름이 늘고 눅눅함, 바람이 들쭉날쭉 · 화살이 조금 더 나감'],
+  [P_HI + 1, '평기압', '보통 날씨, 구름 조금 · 기준표 그대로'],
+  [1030, '고기압', '맑고 시야가 좋음, 바람이 잔잔하거나 일정 · 화살이 덜 나감'],
+  [9999, '강한 고기압', '하늘이 높고 매우 맑고 건조, 아침저녁 쌀쌀 · 화살이 많이 덜 나감']
+];
+function showPressureSign(p){
+  const s = P_SIGNS.find(x => p < x[0]), el = $('windSign'), ex = excess(p);
+  el.innerHTML = `<b>${p} hPa · ${s[1]}${ex ? ` (${ex > 0 ? '+' : ''}${ex})` : ''}</b><small>${s[2]}</small>`;
+  el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
+  clearTimeout(signT); signT = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 200); }, 1800);
+}
+function pNudge(up){ S.pressure = clamp(pStep(S.pressure, up), 960, 1050); saveS(); syncSliders(); renderWxCard(); draw(); showPressureSign(S.pressure); }
 [['pDn', true], ['pUp', false]].forEach(([id, up]) => {
   const b = $(id); let t1 = null, t2 = null;
   const stop = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; };
