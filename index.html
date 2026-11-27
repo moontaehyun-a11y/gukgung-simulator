@@ -181,10 +181,32 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 #toast{position:fixed;left:50%;top:calc(var(--hh) + 74px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(31,28,24,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
 #toast.on{opacity:1}
 @media (max-width:480px){.steps span{padding:4px 7px;font-size:11.5px}header h1{display:none}.sl{grid-template-columns:54px 1fr 84px}header .ic{width:35px;height:38px;font-size:15px}header{gap:4px;padding:0 6px}.wxcard small{display:none}}
+/* 처음 안내: 톱니바퀴 버튼만 밝게 남기고 나머지는 어둡게 */
+#tut{position:fixed;inset:0;z-index:80}
+#tut .catch{position:absolute;inset:0}
+#tut .hole{position:fixed;border-radius:12px;box-shadow:0 0 0 3px #e0352b,0 0 0 9999px rgba(20,16,12,.55);cursor:pointer;animation:tutPulse 1.2s ease-in-out infinite}
+@keyframes tutPulse{50%{box-shadow:0 0 0 6px #e0352b,0 0 0 9999px rgba(20,16,12,.55)}}
+#tut .arw{position:fixed;width:46px;height:78px;pointer-events:none;animation:tutBob 1s ease-in-out infinite}
+@keyframes tutBob{50%{transform:translateY(7px)}}
+#tut .card{position:fixed;right:10px;width:min(320px,calc(100% - 20px));background:#fbf8f1;border:2px solid #e0352b;border-radius:14px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+#tut .card .t{font-size:18px;font-weight:800;color:#c8281f;margin-bottom:6px}
+#tut .card .s{font-size:14px;line-height:1.55;color:var(--ink)}
+#tut .card .row{margin-top:12px}
+@media (prefers-reduced-motion:reduce){#tut .hole,#tut .arw{animation:none}}
 </style>
 </head>
 <body>
 <!-- 인트로: 앱을 열 때 잠깐 (누르면 바로 넘어감) -->
+<div id="tut" hidden>
+  <div class="catch"></div>
+  <div class="hole" role="button" aria-label="개인 기준 열기"></div>
+  <svg class="arw" viewBox="0 0 46 78" aria-hidden="true"><path d="M23 74 V18" stroke="#e0352b" stroke-width="8" stroke-linecap="round" fill="none"/><path d="M4 26 L23 4 L42 26 Z" fill="#e0352b" stroke="#e0352b" stroke-width="4" stroke-linejoin="round"/></svg>
+  <div class="card">
+    <div class="t">자신의 기본표를 먼저 맞추세요</div>
+    <div class="s">처음 오셨군요. 오른쪽 위 <b>⚙ 개인 기준</b>에서 <b>상하 기준</b>(바람 없을 때 겨냥하는 높이)과 <b>좌우</b>, 바람·기압 <b>간격</b>을 내 활에 맞춰 주세요.<br>그다음부터는 바람과 기압에 따라 표가 저절로 움직입니다.</div>
+    <div class="row"><button class="btn red grow" id="tutGo">⚙ 지금 맞추기</button><button class="btn" id="tutLater">나중에</button></div>
+  </div>
+</div>
 <div id="intro" aria-hidden="true">
   <svg viewBox="0 0 200 240" width="150" height="180">
     <rect x="40" y="40" width="120" height="160" rx="4" fill="#f7f5ef" stroke="#cfc6b6" stroke-width="2"/>
@@ -300,6 +322,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
     <div class="row" style="margin-top:10px"><button class="btn red" id="persFix">지금 값을 초기값으로 고정</button><button class="btn" id="persFactory">초기값으로</button></div>
     <hr style="border:0;border-top:1px solid var(--line);margin:14px 0 10px">
     <div class="row"><span class="hint grow">오늘 기압·바람만 지우기 (개인 기준은 유지)</span><button class="btn" id="resetToday">오늘 값 지우기</button></div>
+    <div class="row"><span class="hint grow">처음 안내 다시 보기</span><button class="btn" id="tutAgain">안내 보기</button></div>
   </div>
 </div>
 
@@ -889,6 +912,7 @@ $('persClose').onclick = closePers;
 
 $('persFactory').onclick = () => { P = { ...DEF }; saveP(); renderPers(); syncSliders(); draw(); toast('초기값으로 돌렸습니다'); };
 $('persFix').onclick = () => { DEF = { ...P }; store('gukgung3-def', DEF); toast(`지금 기준을 초기값으로 고정했습니다 (상하 ${cm(P.baseY)} · 좌우 ${cm(P.baseZ || 0)} · 고기압 ${Math.round(P.perHpa * 100)} · 저기압 ${Math.round(perOf(-1) * 100)} · 좌우바람 ${cm(P.kw)} · 앞뒤바람 ${cm(P.kx)} cm)`); };
+$('tutAgain').onclick = () => { closePers(); setTimeout(() => window.showTut && window.showTut(), 200); };
 $('resetToday').onclick = () => { S = TODAY0(); S.date = today(); saveS(); closePers(); setStep(2); renderHits(); renderSheet(); toast('오늘 값만 지웠습니다 (개인 기준은 그대로)'); };
 
 // ---------- 날씨 (GPS → Open-Meteo) ----------
@@ -1395,6 +1419,25 @@ $('pages').addEventListener('pointerup', e => {
 // 인트로: 1.6초 뒤 사라짐, 누르면 바로
 (() => { const el = $('intro'); let done = false; const go = () => { if (done) return; done = true; el.classList.add('out'); setTimeout(() => el.remove(), 500); }; setTimeout(go, 1600); el.addEventListener('pointerdown', go); })();
 
+// 처음 안내: 처음 한 번만, 인트로가 끝난 뒤 톱니바퀴(개인 기준)를 빨간 화살표로 가리킨다
+(() => {
+  let seen = false; try { seen = localStorage.getItem('gukgung3-tut') === '1'; } catch (e) {}
+  const T = $('tut'), btn = $('persBtn');
+  const place = () => {
+    if (T.hidden) return;
+    const r = btn.getBoundingClientRect(), hole = T.querySelector('.hole'), arw = T.querySelector('.arw'), card = T.querySelector('.card');
+    Object.assign(hole.style, { left: (r.left - 4) + 'px', top: (r.top - 4) + 'px', width: (r.width + 8) + 'px', height: (r.height + 8) + 'px' });
+    Object.assign(arw.style, { left: (r.left + r.width / 2 - 23) + 'px', top: (r.bottom + 10) + 'px' });
+    card.style.top = (r.bottom + 92) + 'px';
+  };
+  const done = () => { T.hidden = true; try { localStorage.setItem('gukgung3-tut', '1'); } catch (e) {} };
+  const open = () => { done(); btn.click(); };
+  window.showTut = () => { T.hidden = false; place(); };
+  T.querySelector('.hole').onclick = open; $('tutGo').onclick = open; $('tutLater').onclick = done;
+  btn.addEventListener('click', () => { if (!T.hidden) done(); });
+  addEventListener('resize', place); if (window.visualViewport) visualViewport.addEventListener('resize', place);
+  if (!seen) setTimeout(window.showTut, 2100);
+})();
 // 안드로이드 브라우저는 주소창·아래 메뉴가 나타났다 사라지며 보이는 높이가 바뀐다 → 실제 보이는 높이로 창 크기를 맞춘다
 function setVVH(){ const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight; document.documentElement.style.setProperty('--vvh', h + 'px'); }
 setVVH(); window.addEventListener('resize', setVVH); if (window.visualViewport) window.visualViewport.addEventListener('resize', setVVH);
