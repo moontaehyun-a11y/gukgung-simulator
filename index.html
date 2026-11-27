@@ -974,7 +974,7 @@ $('persClose').onclick = closePers;
 $('persFactory').onclick = () => { P = { ...DEF }; saveP(); renderPers(); syncSliders(); draw(); toast('초기값으로 돌렸습니다'); };
 $('persFix').onclick = () => { DEF = { ...P }; store('gukgung3-def', DEF); toast(`지금 기준을 초기값으로 고정했습니다 (상하 ${cm(P.baseY)} · 좌우 ${cm(P.baseZ || 0)} · 고기압 ${Math.round(P.perHpa * 100)} · 저기압 ${Math.round(perOf(-1) * 100)} · 좌우바람 ${cm(P.kw)} · 앞뒤바람 ${cm(P.kx)} cm)`); };
 $('tutAgain').onclick = () => { closePers(); setTimeout(() => window.showTut && window.showTut(), 200); };
-$('resetToday').onclick = () => { S = TODAY0(); S.date = today(); saveS(); closePers(); setStep(2); renderHits(); renderSheet(); toast('오늘 값만 지웠습니다 (개인 기준은 그대로)'); };
+$('resetToday').onclick = () => { const keep = { sheet: S.sheet, hits: S.hits, date: S.date || today() }; S = Object.assign(TODAY0(), keep); saveS(); /* 기압·바람만 지우고 습사 기록은 그대로 */ closePers(); setStep(2); renderHits(); renderSheet(); toast('오늘 값만 지웠습니다 (개인 기준은 그대로)'); };
 
 // ---------- 날씨 (GPS → Open-Meteo) ----------
 const DIR16 = ['북', '북북동', '북동', '동북동', '동', '동남동', '남동', '남남동', '남', '남남서', '남서', '서남서', '서', '서북서', '북서', '북북서'];
@@ -1506,7 +1506,7 @@ $('calOpen').onclick = openCal; $('calX').onclick = () => { $('vCal').hidden = t
 $('calPrev').onclick = () => { calYM.m--; if (calYM.m < 0) { calYM.m = 11; calYM.y--; } renderCal(); };
 $('calNext').onclick = () => { calYM.m++; if (calYM.m > 11) { calYM.m = 0; calYM.y++; } renderCal(); };
 // 날이 바뀌면: 지난 습사는 달력에 남기고 오늘 습사는 새로
-if (S.date !== today()) { if (S.date) { logSave3(); S.sheet = blankSheet(); S.hits = []; } S.date = today(); saveS(); }   // 날이 바뀌면 습사는 새로
+if (S.date !== today()) { if (S.date) { const had = sheetStats(S.sheet).shots, old = S.date; logSave3(); S.sheet = blankSheet(); S.hits = []; if (had) setTimeout(() => toast(`${+old.slice(5, 7)}월 ${+old.slice(8)}일 습사 ${had}시는 📅 기록 달력에 저장되어 있습니다`), 2600); } S.date = today(); saveS(); }   // 날이 바뀌면 습사는 새로
 
 // 화면 넘기기: 옆으로 밀기(스와이프) 또는 위 「습사」 버튼
 let curPage = 0;
