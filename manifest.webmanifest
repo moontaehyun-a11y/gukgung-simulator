@@ -1,6 +1,6 @@
 {
-  "name": "국궁 표잡기 v3",
-  "short_name": "표잡기 v3",
+  "name": "오늘 바람",
+  "short_name": "오늘 바람",
   "description": "기압·바람 버튼으로 오늘 표를 바로 잡는 국궁 145m 도구",
   "start_url": "./",
   "scope": "./",
