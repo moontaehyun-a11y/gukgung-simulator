@@ -187,8 +187,9 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 #tut .hole{position:fixed;border-radius:12px;box-shadow:0 0 0 3px #e0352b,0 0 0 9999px rgba(20,16,12,.55);cursor:pointer;animation:tutPulse 1.2s ease-in-out infinite}
 @keyframes tutPulse{50%{box-shadow:0 0 0 6px #e0352b,0 0 0 9999px rgba(20,16,12,.55)}}
 #tut .arw{position:fixed;width:46px;height:78px;pointer-events:none;animation:tutBob 1s ease-in-out infinite}
+#tut.down .arw svg{transform:rotate(180deg)}
 @keyframes tutBob{50%{transform:translateY(7px)}}
-#tut .card{position:fixed;right:10px;width:min(320px,calc(100% - 20px));background:#fbf8f1;border:2px solid #e0352b;border-radius:14px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+#tut .card{position:fixed;width:min(320px,calc(100% - 20px));background:#fbf8f1;border:2px solid #e0352b;border-radius:14px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 #tut .card .t{font-size:18px;font-weight:800;color:#c8281f;margin-bottom:6px}
 #tut .card .s{font-size:14px;line-height:1.55;color:var(--ink)}
 #tut .card .row{margin-top:12px}
@@ -207,12 +208,8 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 <div id="tut" hidden>
   <div class="catch"></div>
   <div class="hole" role="button" aria-label="개인 기준 열기"></div>
-  <svg class="arw" viewBox="0 0 46 78" aria-hidden="true"><path d="M23 74 V18" stroke="#e0352b" stroke-width="8" stroke-linecap="round" fill="none"/><path d="M4 26 L23 4 L42 26 Z" fill="#e0352b" stroke="#e0352b" stroke-width="4" stroke-linejoin="round"/></svg>
-  <div class="card">
-    <div class="t">자신의 기본표를 먼저 맞추세요</div>
-    <div class="s">처음 오셨군요. 오른쪽 위 <b>⚙ 개인 기준</b>에서 <b>상하 기준</b>(바람 없을 때 겨냥하는 높이)과 <b>좌우</b>, 바람·기압 <b>간격</b>을 내 활에 맞춰 주세요.<br>그다음부터는 바람과 기압에 따라 표가 저절로 움직입니다.</div>
-    <div class="row"><button class="btn red grow" id="tutGo">⚙ 지금 맞추기</button><button class="btn" id="tutLater">나중에</button></div>
-  </div>
+  <div class="arw"><svg viewBox="0 0 46 78" width="46" height="78" aria-hidden="true"><path d="M23 74 V18" stroke="#e0352b" stroke-width="8" stroke-linecap="round" fill="none"/><path d="M4 26 L23 4 L42 26 Z" fill="#e0352b" stroke="#e0352b" stroke-width="4" stroke-linejoin="round"/></svg></div>
+  <div class="card"><div class="t"></div><div class="s"></div><div class="row"><button class="btn red grow" id="tutGo"></button><button class="btn" id="tutLater"></button></div></div>
 </div>
 <div id="intro" aria-hidden="true">
   <svg viewBox="0 0 200 240" width="150" height="180">
@@ -923,7 +920,7 @@ $('bz0').onclick = () => setBZ(0);
 function setBY(v){ P.baseY = Math.round(clamp(v, -3, 8) * 100) / 100; saveP(); renderPers(); syncSliders(); draw(); }
 [['byD10', -0.10], ['byD', -0.01], ['byU', 0.01], ['byU10', 0.10]].forEach(([id, d]) => $(id).onclick = () => setBY(P.baseY + d));
 $('persBtn').onclick = () => { renderPers(); $('vPers').hidden = false; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = 'hidden'); placeNudges(); draw(); };
-function closePers(){ $('vPers').hidden = true; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = ''); draw(); }
+function closePers(){ $('vPers').hidden = true; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = ''); draw();  window.tutAfterPers && window.tutAfterPers(); }
 $('persClose').onclick = closePers;
 
 $('persFactory').onclick = () => { P = { ...DEF }; saveP(); renderPers(); syncSliders(); draw(); toast('초기값으로 돌렸습니다'); };
@@ -956,6 +953,7 @@ function applyWx(wx, rg){
   ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true);
   setStep(2);
   toast(`${rg.name}: ${S.pressure} hPa · ${windWords(S.w)} 를 넣었습니다`);
+  window.tutAfterWx && window.tutAfterWx();
 }
 let pend = null;
 async function readWx(){
@@ -1435,24 +1433,48 @@ $('pages').addEventListener('pointerup', e => {
 // 인트로: 1.6초 뒤 사라짐, 누르면 바로
 (() => { const el = $('intro'); let done = false; const go = () => { if (done) return; done = true; el.classList.add('out'); setTimeout(() => el.remove(), 500); }; setTimeout(go, 1600); el.addEventListener('pointerdown', go); })();
 
-// 처음 안내: 처음 한 번만, 인트로가 끝난 뒤 톱니바퀴(개인 기준)를 빨간 화살표로 가리킨다
+// 처음 안내: 빨간 화살표로 차례대로 짚어 준다 — ① ⚙ 개인 기준 → (창을 닫으면) ② 📍 날씨 → (날씨가 들어가면) ③ ☝ 직접
 (() => {
   let seen = false; try { seen = localStorage.getItem('gukgung3-tut') === '1'; } catch (e) {}
-  const T = $('tut'), btn = $('persBtn');
+  const T = $('tut'), hole = T.querySelector('.hole'), arw = T.querySelector('.arw'), card = T.querySelector('.card');
+  let cur = null;
   const place = () => {
-    if (T.hidden) return;
-    const r = btn.getBoundingClientRect(), hole = T.querySelector('.hole'), arw = T.querySelector('.arw'), card = T.querySelector('.card');
+    if (T.hidden || !cur) return;
+    const r = cur.el.getBoundingClientRect(), vw = innerWidth, vh = (window.visualViewport && visualViewport.height) || innerHeight;
+    const down = r.top + r.height / 2 > vh / 2; T.classList.toggle('down', down);
     Object.assign(hole.style, { left: (r.left - 4) + 'px', top: (r.top - 4) + 'px', width: (r.width + 8) + 'px', height: (r.height + 8) + 'px' });
-    Object.assign(arw.style, { left: (r.left + r.width / 2 - 23) + 'px', top: (r.bottom + 10) + 'px' });
-    card.style.top = (r.bottom + 92) + 'px';
+    const cw = card.offsetWidth, cx = Math.max(10, Math.min(vw - cw - 10, r.left + r.width / 2 - cw / 2));
+    card.style.left = cx + 'px'; arw.style.left = (r.left + r.width / 2 - 23) + 'px';
+    if (down) { arw.style.top = (r.top - 88) + 'px'; card.style.top = Math.max(8, r.top - 92 - card.offsetHeight) + 'px'; }
+    else { arw.style.top = (r.bottom + 10) + 'px'; card.style.top = (r.bottom + 92) + 'px'; }
   };
-  const done = () => { T.hidden = true; try { localStorage.setItem('gukgung3-tut', '1'); } catch (e) {} };
-  const open = () => { done(); window.persTutNext = true; btn.click(); };
-  window.showTut = () => { T.hidden = false; place(); };
-  T.querySelector('.hole').onclick = open; $('tutGo').onclick = open; $('tutLater').onclick = done;
-  btn.addEventListener('click', () => { if (!T.hidden) done(); });
+  const hide = () => { T.hidden = true; cur = null; };
+  // o: { el, title, body, go: 글자, onGo, later: 글자, onLater }
+  const spot = o => {
+    cur = o; card.querySelector('.t').innerHTML = o.title; card.querySelector('.s').innerHTML = o.body;
+    $('tutGo').textContent = o.go; $('tutLater').textContent = o.later || '나중에'; $('tutLater').hidden = o.later === '';
+    T.hidden = false; place(); requestAnimationFrame(place);
+  };
+  $('tutGo').onclick = () => { const o = cur; hide(); o && o.onGo && o.onGo(); };
+  $('tutLater').onclick = () => { const o = cur; hide(); o && o.onLater && o.onLater(); };
+  hole.onclick = () => $('tutGo').onclick();
   addEventListener('resize', place); if (window.visualViewport) visualViewport.addEventListener('resize', place);
-  if (!seen) setTimeout(window.showTut, 2100);
+  let chain = 0;   // 1: 개인 기준 창이 열려 있음 → 닫히면 날씨 안내, 2: 날씨가 들어가면 직접 안내
+  const step1 = () => spot({ el: $('persBtn'), title: '자신의 기본표를 먼저 맞추세요',
+    body: '처음 오셨군요. 오른쪽 위 <b>⚙ 개인 기준</b>에서 <b>상하 기준</b>(바람 없을 때 겨냥하는 높이)과 <b>좌우</b>, 바람·기압 <b>간격</b>을 내 활에 맞춰 주세요.<br>그다음부터는 바람과 기압에 따라 표가 저절로 움직입니다.',
+    go: '⚙ 지금 맞추기', onLater: () => { seen = true; try { localStorage.setItem('gukgung3-tut', '1'); } catch (e) {} }, onGo: () => { window.persTutNext = true; chain = 1; $('persBtn').click(); } });
+  const step2 = () => spot({ el: $('wxBtn'), title: '현재 장소의 날씨를 자동스캔하세요',
+    body: '<b>📍 날씨</b>를 누르면 지금 있는 곳의 기압과 바람을 읽어 와서 표에 바로 넣습니다.',
+    go: '📍 날씨 읽기', onGo: () => { chain = 2; $('wxBtn').click(); }, onLater: () => { chain = 0; } });
+  const step3 = () => spot({ el: $('pickBtn'), title: '현장과 다르면 직접 고치세요',
+    body: '날씨가 들어갔습니다. 현장 실제 상황과 다른 경우에는 <b>☝ 직접</b> 버튼을 눌러서 바람 위치를 수정하세요.<br>켠 다음 과녁에서 표를 놓을 자리를 누르거나 끌면 됩니다.',
+    go: '알겠어요', later: '' });
+  window.showTut = () => { chain = 0; step1(); };
+  window.tutAfterPers = () => { if (chain === 1) { chain = 0; setTimeout(() => { if (T.hidden) step2(); }, 350); } };
+  window.tutAfterWx = () => { if (chain === 2) { chain = 0; setTimeout(() => { if (T.hidden) step3(); }, 1200); } };
+  $('persBtn').addEventListener('click', () => { if (!T.hidden && cur && cur.el === $('persBtn')) hide(); });
+  $('persBtn').addEventListener('click', () => { if (!$('vPers').hidden && !seen) { seen = true; try { localStorage.setItem('gukgung3-tut', '1'); } catch (e) {} } });
+  if (!seen) setTimeout(() => { if ($('vPers').hidden) step1(); }, 2100);
 })();
 // 개인 기준을 처음 펼쳤을 때(또는 안내 다시 보기): 상하·좌우 기준을 둘 다 움직이면 "초기값으로 고정"을 짚어 준다
 (() => {
