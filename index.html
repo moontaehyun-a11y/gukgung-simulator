@@ -58,12 +58,13 @@ input[type=range]{width:100%;height:28px;accent-color:var(--ink);background:tran
 .tog{font-size:12.5px;padding:7px 10px;min-height:36px}
 .tog.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 /* 모달·시트 */
-.veil{position:fixed;inset:0;background:rgba(20,16,12,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+.veil{position:fixed;left:0;right:0;top:0;height:100vh;height:var(--vvh,100dvh);background:rgba(20,16,12,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:12px}
 .veil[hidden]{display:none}
-.sheet{background:var(--paper);border-radius:16px;padding:18px;width:min(460px,100%);max-height:92%;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.sheet{background:var(--paper);border-radius:16px;padding:16px;width:min(460px,100%);max-height:100%;overflow:auto;overscroll-behavior:contain;box-shadow:0 20px 50px rgba(0,0,0,.3)}
 .sheet h2{font-size:19px;margin:0 0 6px}
 .sheet p{margin:6px 0}
 .dir16{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+@media (max-width:480px){.dir16{grid-template-columns:repeat(8,1fr);gap:4px}.dir16 button{font-size:11px;padding:8px 0;letter-spacing:-.5px}}
 .dir16 button{padding:9px 0;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:13px;cursor:pointer}
 .dir16 button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .field{font:inherit;font-size:16px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;width:100%}
@@ -1375,6 +1376,10 @@ $('pages').addEventListener('pointerup', e => {
 
 // 인트로: 1.6초 뒤 사라짐, 누르면 바로
 (() => { const el = $('intro'); let done = false; const go = () => { if (done) return; done = true; el.classList.add('out'); setTimeout(() => el.remove(), 500); }; setTimeout(go, 1600); el.addEventListener('pointerdown', go); })();
+
+// 안드로이드 브라우저는 주소창·아래 메뉴가 나타났다 사라지며 보이는 높이가 바뀐다 → 실제 보이는 높이로 창 크기를 맞춘다
+function setVVH(){ const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight; document.documentElement.style.setProperty('--vvh', h + 'px'); }
+setVVH(); window.addEventListener('resize', setVVH); if (window.visualViewport) window.visualViewport.addEventListener('resize', setVVH);
 // ---------- 공통 ----------
 function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2800); }
 new ResizeObserver(() => draw()).observe(cv);
