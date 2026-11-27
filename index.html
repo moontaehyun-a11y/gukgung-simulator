@@ -83,7 +83,7 @@ input[type=range]{width:100%;height:28px;accent-color:var(--ink);background:tran
 #vPers .sheet{pointer-events:auto;background:rgba(250,248,242,.9);-webkit-backdrop-filter:none;backdrop-filter:none;color:var(--ink);border:1px solid rgba(255,255,255,.7);box-shadow:0 6px 20px rgba(0,0,0,.15);width:min(620px,100%);padding:12px 14px;max-height:58%}
 #vPers .btn{font-size:12.5px;padding:7px 10px;min-height:36px}
 #vPers .bzfine .btn{min-height:30px;padding:4px 9px;font-size:12px}
-.bzfine{justify-content:center;gap:6px;margin:0 0 4px 70px}.bzfine .btn{min-height:34px;padding:5px 10px}
+.bzfine{justify-content:center;gap:6px;margin:0 0 4px 70px;flex-wrap:nowrap}.bzfine .btn{min-height:34px;padding:5px 10px}
 #vPers h2{font-size:16px;margin:0 0 2px}
 #vPers .sheet>p{font-size:12px;margin:2px 0 6px}
 #vPers .hint[style]{font-size:11px;margin:-6px 0 4px 70px !important}
@@ -175,7 +175,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
   #vPers .sl{margin:0;grid-template-columns:62px 1fr 74px}
   #vPers input[type=range]{height:26px}
   #vPers .bzfine{margin:0 0 2px 70px}
-  #vPers .sheet{max-height:64%;padding:12px 14px}
+  #vPers .sheet{max-height:74%;padding:12px 14px}
   #vPers hr{margin:10px 0 8px !important}
 }
 #toast{position:fixed;left:50%;top:calc(var(--hh) + 74px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(31,28,24,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
@@ -282,7 +282,8 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
   <div class="sheet">
     <div class="row ph"><h2 class="grow">⚙ 개인 기준 (표 간격)</h2><button class="btn pri" id="persClose">닫기</button></div>
     <p class="hint">슬라이더대로 옮긴 표가 실제와 맞지 않으면 여기서 간격을 고칩니다. 이 값은 이 기기에 따로 저장되어 <b>오늘 값을 지워도 그대로</b> 남습니다.</p>
-    <div class="sl"><label for="kB">상하 기준</label><input id="kB" type="range" min="0" max="4.2" step="0.05"><output id="oB"></output></div>
+    <div class="sl"><label for="kB">상하 기준</label><input id="kB" type="range" min="-3" max="8" step="0.01"><output id="oB"></output></div>
+    <div class="row bzfine"><button class="btn tog" id="byD10" title="10cm 아래로">▼10</button><button class="btn tog" id="byD" title="1cm 아래로">▼1</button><button class="btn tog" id="byU" title="1cm 위로">▲1</button><button class="btn tog" id="byU10" title="10cm 위로">▲10</button><span class="hint" style="align-self:center">cm</span></div>
     <div class="hint" style="margin:-2px 0 6px 70px">평기압(1007~1019 hPa)일 때 겨냥 높이</div>
     <div class="sl"><label for="kBZ">기준 좌우</label><input id="kBZ" type="range" min="-1" max="1" step="0.01" list="bzTicks"><output id="oBZ"></output></div>
     <datalist id="bzTicks"><option value="0"></option></datalist>
@@ -722,7 +723,7 @@ function renderCheck(){
   if (!okY) {
     if (Math.abs(S.w.x) >= 0.5) { const need = -P.kx * S.w.x - dy, k = clamp(-need / S.w.x, 0.05, 0.50); if (Math.abs(k - P.kx) >= 0.01) proposal.push({ key: 'kx', name: '앞뒤 간격', from: cm(P.kx), to: cm(k), v: k }); }
     else if (excess(S.pressure) !== 0) { const e = excess(S.pressure), k = clamp((pShift() - dy) / e, 0.01, 0.60); const kr = Math.max(1, Math.round(k * 100)) / 100; proposal.push({ key: e < 0 ? 'perHpaLo' : 'perHpa', name: e < 0 ? '저기압 간격' : '고기압 간격', from: Math.round(P.perHpa * 100), to: Math.round(kr * 100), v: kr, unit: 'cm/hPa' }); }
-    else proposal.push({ key: 'baseY', name: '상하 기준', from: cm(P.baseY), to: cm(clamp(P.baseY - dy, 0, 4.2)), v: clamp(P.baseY - dy, 0, 4.2), unit: 'cm(바닥에서)' });
+    else proposal.push({ key: 'baseY', name: '상하 기준', from: cm(P.baseY), to: cm(clamp(P.baseY - dy, -3, 8)), v: clamp(P.baseY - dy, -3, 8), unit: 'cm(바닥에서)' });
   }
   const dirZ = Math.abs(dz) < 0.02 ? '' : `${dz > 0 ? '오른쪽' : '왼쪽'}으로 ${cm(Math.abs(dz))} cm`, dirY = Math.abs(dy) < 0.02 ? '' : `${dy > 0 ? '위' : '아래'}로 ${cm(Math.abs(dy))} cm`;
   const good = okZ && okY;
@@ -778,7 +779,7 @@ function hitProposal(){
       const k = clamp(grp.reduce((s, p) => s + (perOf(excess(p.p), p) * excess(p.p) - (p.y - CY)) / excess(p.p), 0) / grp.length, 0.01, 0.6), kr = Math.max(1, Math.round(k * 100)) / 100;
       out.push({ key, name: lo ? '저기압 간격' : '고기압 간격', from: Math.round(perOf(lo ? -1 : 1) * 100), to: Math.round(kr * 100), v: kr, unit: 'cm/hPa' });
     }
-    else { const v = clamp(P.baseY - my, 0, 4.2); out.push({ key: 'baseY', name: '상하 기준', from: cm(P.baseY), to: cm(v), v, unit: 'cm' }); }
+    else { const v = clamp(P.baseY - my, -3, 8); out.push({ key: 'baseY', name: '상하 기준', from: cm(P.baseY), to: cm(v), v, unit: 'cm' }); }
   }
   return out.length ? { n, mz, my, items: out, sig: H.length + ':' + H[H.length - 1].t } : null;
 }
@@ -858,7 +859,7 @@ cv.addEventListener('pointerup', e => {
 
 // ---------- 개인 기준 ----------
 function renderPers(){
-  $('kB').value = P.baseY; $('oB').textContent = `${cm(P.baseY)} cm`;
+  $('kB').value = P.baseY; $('oB').textContent = `${cm(P.baseY)} cm`; $('kB').title = '과녁 바닥에서의 높이';
   $('kBZ').value = P.baseZ || 0; $('oBZ').textContent = Math.abs(P.baseZ || 0) < 0.005 ? '가운데' : `${P.baseZ > 0 ? '오른쪽' : '왼쪽'} ${cm(Math.abs(P.baseZ))} cm`;
   $('kP').value = Math.round(P.perHpa * 100); $('oKP').textContent = `${Math.round(P.perHpa * 100)} cm`;
   $('kPL').value = Math.round(perOf(-1) * 100); $('oKPL').textContent = `${Math.round(perOf(-1) * 100)} cm`;
@@ -878,6 +879,10 @@ $('bzL').onclick = () => setBZ((P.baseZ || 0) - 0.01);
 $('bzR').onclick = () => setBZ((P.baseZ || 0) + 0.01);
 $('bz0').onclick = () => setBZ(0);
 
+
+// 상하 기준 미세 조정: 1 cm / 10 cm씩
+function setBY(v){ P.baseY = Math.round(clamp(v, -3, 8) * 100) / 100; saveP(); renderPers(); syncSliders(); draw(); }
+[['byD10', -0.10], ['byD', -0.01], ['byU', 0.01], ['byU10', 0.10]].forEach(([id, d]) => $(id).onclick = () => setBY(P.baseY + d));
 $('persBtn').onclick = () => { renderPers(); $('vPers').hidden = false; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = 'hidden'); placeNudges(); draw(); };
 function closePers(){ $('vPers').hidden = true; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = ''); draw(); }
 $('persClose').onclick = closePers;
