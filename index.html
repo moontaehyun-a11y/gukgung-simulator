@@ -293,6 +293,14 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 </main>
 
 <!-- ① 시작: 날씨 읽기 -->
+<div class="veil" id="vAsk" hidden>
+  <div class="sheet" style="max-width:360px">
+    <h2>현장 바람과 차이가 큰가요?</h2>
+    <p class="hint" id="askVal" style="margin:4px 0 4px;font-weight:700;color:var(--ink)"></p>
+    <p class="hint" style="margin:0 0 10px">날씨 앱 바람은 넓은 지역의 예보값이라 활터 바람과 다를 수 있습니다.</p>
+    <div class="row"><button class="btn red grow" id="askYes">예, 많이 달라요</button><button class="btn grow" id="askNo">아니오</button></div>
+  </div>
+</div>
 <div class="veil" id="vStart" hidden>
   <div class="sheet">
     <h2>주변 날씨 정보를 읽겠습니까?</h2>
@@ -1024,6 +1032,7 @@ function applyWx(wx, rg){
   setStep(2);
   toast(`${rg.name}: ${S.tempC}°C · ${S.pressure} hPa (${S.pRef != null ? `주변 ${Math.round(S.pRef)} → ${pClass(S.pressure)}` : '주변 비교 못함'}) · 공기 ${S.rho ? `${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : '—'} · ${windWords(S.w)} 를 넣었습니다`);
   window.tutAfterWx && window.tutAfterWx();
+  setTimeout(() => { if (!($('tut').hidden && $('vStart').hidden && $('vDir').hidden)) return; $('askVal').textContent = `들어간 값: ${$('toast').textContent.replace(/^[^:]*:\s*/, '').replace(/\s*를 넣었습니다$/, '')}`; clearTimeout(toast.t); $('toast').classList.remove('on'); $('vAsk').hidden = false; }, 1200);
 }
 let pend = null;
 async function readWx(){
@@ -1584,7 +1593,9 @@ $('pages').addEventListener('pointerup', e => {
     go: '알겠어요', later: '' });
   window.showTut = () => { chain = 0; step1(); };
   window.tutAfterPers = () => { if (chain === 1) { chain = 0; setTimeout(() => { if (T.hidden) step2(); }, 350); } };
-  window.tutAfterWx = () => { if (chain === 2) { chain = 0; setTimeout(() => { if (T.hidden) step3(); }, 1200); } };
+  window.tutAfterWx = () => { chain = 0; };
+  // 날씨를 넣은 뒤 "현장 바람과 차이가 큰가요?" → 예: 까닭을 짧게 알려 주고 상하좌우 바람 버튼을 짚어 준다
+  window.spotWind = (title, body) => spot({ els: ['nU', 'nD', 'nL', 'nR'].map($), title, body, go: '알겠어요', later: '' });
   $('persBtn').addEventListener('click', () => { if (!T.hidden && cur && cur.el === $('persBtn')) hide(); });
   $('persBtn').addEventListener('click', () => { if (!$('vPers').hidden && !seen) { seen = true; try { localStorage.setItem('gukgung3-tut', '1'); } catch (e) {} } });
   if (!seen) setTimeout(() => { if ($('vPers').hidden) step1(); }, 2100);
@@ -1610,6 +1621,14 @@ $('pages').addEventListener('pointerup', e => {
     armed = true; mY = mZ = false; fixBox.hidden = true; fixBtn.classList.remove('tutring');
   });
 })();
+$('askNo').onclick = () => { $('vAsk').hidden = true; toast('날씨 값 그대로 갑니다'); };
+$('askYes').onclick = () => {
+  $('vAsk').hidden = true; const e = excess(S.pressure);
+  if (e) window.spotWind(`${e > 0 ? '고기압' : '저기압'}: 전단·난류 가능성 큼`,
+    '높이마다 풍향이 다른 <b>바람 전단</b>과, 순간 풍향이 바뀌는 <b>난류</b>가 생겼을 가능성이 큽니다.<br>상하좌우 바람 버튼으로 현장 바람에 맞추세요.');
+  else window.spotWind('평기압: 지형 바람일 수 있음',
+    '예보는 넓은 지역 평균이라 산·골짜기·건물에 따라 활터 바람이 달라집니다.<br>상하좌우 바람 버튼으로 현장 바람에 맞추세요.');
+};
 // 안드로이드 브라우저는 주소창·아래 메뉴가 나타났다 사라지며 보이는 높이가 바뀐다 → 실제 보이는 높이로 창 크기를 맞춘다
 function setVVH(){ const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight; document.documentElement.style.setProperty('--vvh', h + 'px'); }
 setVVH(); window.addEventListener('resize', setVVH); if (window.visualViewport) window.visualViewport.addEventListener('resize', setVVH);
