@@ -208,6 +208,17 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 #vPers .pbt{font-size:13px;font-weight:800;color:#c8281f;margin:0 0 6px;line-height:1.4}
 #vPers .tutring{box-shadow:0 0 0 3px #e0352b;animation:ringPulse 1.1s ease-in-out infinite}
 @keyframes ringPulse{50%{box-shadow:0 0 0 6px rgba(224,53,43,.45)}}
+.cmpbox{text-align:center;margin:6px 0 4px}
+.cmpbox .cmpmsg{font-size:16px;font-weight:800;color:#c8281f;margin-bottom:4px}
+.cmpbox svg{display:block;margin:0 auto;overflow:visible}
+#cmpDial{transition:transform .15s linear;transform-origin:0 0}
+.cmpbox .cmpdeg{font-size:14px;font-weight:700;margin-top:2px}
+.savechk{display:flex;align-items:center;gap:8px;font-size:13.5px;margin:6px 0 2px;cursor:pointer}
+.savechk input{width:20px;height:20px;accent-color:#c8281f}
+#rgList .rgt{font-size:12.5px;color:var(--ink2);margin:6px 0 4px}
+#rgList .rgi{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:5px 0;border-top:1px solid var(--line)}
+#rgList .rgi span{flex:1}
+#rgList .rgi .btn{min-height:30px;padding:4px 10px;font-size:12.5px}
 </style>
 </head>
 <body>
@@ -282,6 +293,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
   <div class="sheet">
     <h2>주변 날씨 정보를 읽겠습니까?</h2>
     <p class="hint">휴대폰 위치로 지금 이 자리의 기압·바람을 받아 표를 자동으로 옮겨 둡니다. 바람은 지역 평균값이라 활터 바람과 다를 수 있어 설정한 표로 쏜 뒤 떨어진 자리로 확인합니다.</p>
+    <div id="rgList"></div>
     <div id="startMsg" class="hint" style="min-height:1.4em"></div>
     <div class="row" style="margin-top:10px"><button class="btn red grow" id="startYes">예, 읽어 주세요</button><button class="btn grow" id="startNo">닫기</button></div>
   </div>
@@ -291,12 +303,25 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 <div class="veil" id="vDir" hidden>
   <div class="sheet">
     <h2>사대 → 과녁 방향</h2>
-    <p class="hint">처음 온 활터입니다. 사대에서 과녁 쪽이 어느 방위인지 한 번만 정하면 다음부터는 자동으로 알아봅니다.</p>
-    <div class="dir16" id="dir16"></div>
-    <div class="row"><button class="btn grow" id="cmpBtn">📱 휴대폰 나침반으로 재기</button></div>
+    <p class="hint">휴대폰 나침반으로 사대에서 과녁 방향을 재 주세요. 활터로 저장해 두면 다음부터는 묻지 않고 자동으로 씁니다.</p>
+    <div class="cmpbox" id="cmpBox" hidden>
+      <div class="cmpmsg">사대에서 과녁 방향을 바라보세요</div>
+      <svg id="cmpSvg" viewBox="-112 -132 224 238" width="200" height="212" aria-hidden="true">
+        <circle r="98" fill="#fbf8f1" stroke="#1f1c18" stroke-width="2"/>
+        <g id="cmpDial"><line x1="0" y1="-95" x2="0" y2="-80" stroke="#c8281f" stroke-width="3" transform="rotate(0.0)"/><line x1="0" y1="-92" x2="0" y2="-86" stroke="#1f1c18" stroke-width="1.5" transform="rotate(22.5)"/><line x1="0" y1="-92" x2="0" y2="-86" stroke="#1f1c18" stroke-width="1.5" transform="rotate(45.0)"/><line x1="0" y1="-92" x2="0" y2="-86" stroke="#1f1c18" stroke-width="1.5" transform="rotate(67.5)"/><line x1="0" y1="-95" x2="0" y2="-80" stroke="#1f1c18" stroke-width="3" transform="rotate(90.0)"/><line x1="0" y1="-92" x2="0" y2="-86" stroke="#1f1c18" stroke-width="1.5" transform="rotate(112.5)"/><line x1="0" y1="-92" x2="0" y2="-86" stroke="#1f1c18" stroke-width="1.5" transform="rotate(135.0)"/><line x1="0" y1="-92" x2="0" y2="-86" stroke="#1f1c18" stroke-width="1.5" transform="rotate(157.5)"/><line x1="0" y1="-95" x2="0" y2="-80" stroke="#1f1c18" stroke-width="3" transform="rotate(180.0)"/><line x1="0" y1="-92" x2="0" y2="-86" stroke="#1f1c18" stroke-width="1.5" transform="rotate(202.5)"/><line x1="0" y1="-92" x2="0" y2="-86" stroke="#1f1c18" stroke-width="1.5" transform="rotate(225.0)"/><line x1="0" y1="-92" x2="0" y2="-86" stroke="#1f1c18" stroke-width="1.5" transform="rotate(247.5)"/><line x1="0" y1="-95" x2="0" y2="-80" stroke="#1f1c18" stroke-width="3" transform="rotate(270.0)"/><line x1="0" y1="-92" x2="0" y2="-86" stroke="#1f1c18" stroke-width="1.5" transform="rotate(292.5)"/><line x1="0" y1="-92" x2="0" y2="-86" stroke="#1f1c18" stroke-width="1.5" transform="rotate(315.0)"/><line x1="0" y1="-92" x2="0" y2="-86" stroke="#1f1c18" stroke-width="1.5" transform="rotate(337.5)"/><text x="0" y="-66" text-anchor="middle" dominant-baseline="central" font-size="17" font-weight="800" fill="#c8281f" transform="rotate(0)">북</text><text x="66" y="0" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="800" fill="#1f1c18" transform="rotate(0)">동</text><text x="0" y="66" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="800" fill="#1f1c18" transform="rotate(0)">남</text><text x="-66" y="0" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="800" fill="#1f1c18" transform="rotate(0)">서</text></g>
+        <path d="M0 -104 L13 -74 L4 -78 L4 26 L-4 26 L-4 -78 L-13 -74 Z" fill="#e0352b" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>
+        <circle r="7" fill="#1f1c18"/><circle r="3" fill="#fff"/>
+        <g transform="translate(0 -120)"><circle r="10" fill="#fff" stroke="#1f1c18" stroke-width="1.5"/><circle r="6" fill="#c8362b"/><circle r="2" fill="#fff"/></g>
+        <text x="20" y="-116" font-size="13" font-weight="800" fill="#c8281f" dominant-baseline="central">과녁</text>
+      </svg>
+      <div class="cmpdeg" id="cmpDeg">휴대폰 윗부분을 과녁 쪽으로 향하세요…</div>
+    </div>
+    <div class="row"><button class="btn red grow" id="cmpBtn">📱 휴대폰 나침반으로 재기</button></div>
     <div class="hint" id="cmpVal" style="min-height:1.4em;margin:4px 0"></div>
-    <div class="row"><input class="field" id="rgName" placeholder="활터 이름 (예: 황학정)" style="flex:1"></div>
-    <div class="row" style="margin-top:10px"><button class="btn red grow" id="dirSave" disabled>저장하고 바람 넣기</button><button class="btn" id="dirCancel">취소</button></div>
+    <div class="dir16" id="dir16" hidden></div>
+    <label class="savechk"><input type="checkbox" id="rgSave"> 이 활터로 저장 (다음부터 방향을 묻지 않음)</label>
+    <div class="row" id="rgNameRow" hidden><input class="field" id="rgName" placeholder="활터 이름 (예: 황학정)" style="flex:1"></div>
+    <div class="row" style="margin-top:10px"><button class="btn red grow" id="dirSave" disabled>바람 넣기</button><button class="btn" id="dirCancel">취소</button></div>
   </div>
 </div>
 
@@ -1008,7 +1033,7 @@ $('locManual').onclick = () => { $('vLoc').hidden = true; manual(); };
 // 활터 방향
 let dirSel = null, cmpOn = false, cmpDeg = null;
 function openDir(name){
-  dirSel = null; $('rgName').value = name || ''; renderDir(); $('cmpVal').textContent = '';
+  dirSel = null; $('rgName').value = name || ''; renderDir(); $('cmpVal').textContent = ''; stopCmp(); $('cmpBox').hidden = true; $('dir16').hidden = true; setDial(0); $('rgSave').checked = false; $('rgNameRow').hidden = true;
   ['vStart', 'vLoc'].forEach(id => $(id).hidden = true); $('vDir').hidden = false;
 }
 function renderDir(){
@@ -1016,25 +1041,48 @@ function renderDir(){
   $('dir16').querySelectorAll('button').forEach(b => b.onclick = () => { dirSel = +b.dataset.d; renderDir(); });
   $('dirSave').disabled = dirSel == null;
 }
-function onOri(e){ const h = e.webkitCompassHeading != null ? e.webkitCompassHeading : (e.absolute && e.alpha != null ? (360 - e.alpha) % 360 : null); if (h == null) return; cmpDeg = h; $('cmpVal').textContent = `지금 ${DIR16n(h)} ${Math.round(h)}° — 과녁 쪽을 향했으면 다시 누르세요`; }
-function stopCmp(){ cmpOn = false; removeEventListener('deviceorientationabsolute', onOri); removeEventListener('deviceorientation', onOri); $('cmpBtn').textContent = '📱 휴대폰 나침반으로 재기'; }
+let cmpWait = null;
+function setDial(h){ $('cmpDial').style.transform = `rotate(${-h}deg)`; $('cmpDial').querySelectorAll('text').forEach(t => t.setAttribute('transform', `rotate(${h} ${t.getAttribute('x')} ${t.getAttribute('y')})`)); }   // 글자는 늘 바로 서게
+function onOri(e){ const h = e.webkitCompassHeading != null ? e.webkitCompassHeading : (e.absolute && e.alpha != null ? (360 - e.alpha) % 360 : null); if (h == null) return; cmpDeg = h; clearTimeout(cmpWait); setDial(h); $('cmpDeg').textContent = `지금 ${DIR16n(h)} ${Math.round(h)}° — 과녁을 바라보고 아래 버튼을 누르세요`; }
+function stopCmp(label){ cmpOn = false; clearTimeout(cmpWait); removeEventListener('deviceorientationabsolute', onOri); removeEventListener('deviceorientation', onOri); $('cmpBtn').textContent = label || '📱 휴대폰 나침반으로 재기'; }
+function cmpFallback(msg){ stopCmp(); $('cmpBox').hidden = true; $('dir16').hidden = false; $('cmpVal').textContent = msg; }
 $('cmpBtn').onclick = async () => {
-  if (cmpOn) { if (cmpDeg != null) { dirSel = cmpDeg; renderDir(); $('cmpVal').textContent = `과녁 방향 ${DIR16n(dirSel)} ${Math.round(dirSel)}°`; } stopCmp(); return; }
+  if (cmpOn) {
+    if (cmpDeg == null) return;
+    dirSel = cmpDeg; renderDir(); setDial(dirSel);
+    $('cmpDeg').textContent = `과녁 방향 ${DIR16n(dirSel)} ${Math.round(dirSel)}° ✓`;
+    stopCmp('📱 다시 재기'); return;
+  }
   try { if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission && (await DeviceOrientationEvent.requestPermission()) !== 'granted') throw 0; }
-  catch (e) { $('cmpVal').textContent = '나침반을 쓸 수 없습니다 — 방위 버튼으로 골라 주세요'; return; }
-  cmpOn = true; cmpDeg = null; addEventListener('deviceorientationabsolute', onOri); addEventListener('deviceorientation', onOri);
-  $('cmpBtn').textContent = '✓ 이 방향으로 정하기'; $('cmpVal').textContent = '휴대폰 윗부분을 과녁 쪽으로 향하세요…';
+  catch (e) { cmpFallback('나침반 권한이 없습니다 — 아래 방위 버튼으로 골라 주세요'); return; }
+  if (typeof DeviceOrientationEvent === 'undefined') { cmpFallback('이 기기에는 나침반이 없습니다 — 아래 방위 버튼으로 골라 주세요'); return; }
+  cmpOn = true; cmpDeg = null; $('cmpBox').hidden = false; $('cmpVal').textContent = '';
+  $('cmpDeg').textContent = '휴대폰 윗부분을 과녁 쪽으로 향하세요…';
+  addEventListener('deviceorientationabsolute', onOri); addEventListener('deviceorientation', onOri);
+  $('cmpBtn').textContent = '✓ 이 방향으로 정하기';
+  cmpWait = setTimeout(() => { if (cmpOn && cmpDeg == null) cmpFallback('나침반 값을 읽지 못했습니다 — 아래 방위 버튼으로 골라 주세요'); }, 3500);
 };
 $('dirSave').onclick = () => {
   if (dirSel == null || !pend) return; stopCmp();
-  const all = ranges(), rg = { id: Date.now().toString(36), name: $('rgName').value.trim() || `활터 ${all.length + 1}`, lat: pend.pos.lat, lon: pend.pos.lon, bearing: dirSel, used: Date.now() };
-  all.push(rg); saveRanges(all); applyWx(pend.wx, rg);
+  if ($('rgSave').checked) {   // 저장을 고른 경우에만 활터로 남긴다 (시험 삼아 누른 자리가 저장되지 않도록)
+    const all = ranges(), rg = { id: Date.now().toString(36), name: $('rgName').value.trim() || `활터 ${all.length + 1}`, lat: pend.pos.lat, lon: pend.pos.lon, bearing: dirSel, used: Date.now() };
+    all.push(rg); saveRanges(all); applyWx(pend.wx, rg);
+  } else applyWx(pend.wx, { id: null, name: $('rgName').value.trim() || '이번 자리', bearing: dirSel });
 };
+$('rgSave').onchange = () => { $('rgNameRow').hidden = !$('rgSave').checked; };
+// 저장된 활터: 날씨 창에서 언제든 지우고 다시 잴 수 있다
+function renderRgList(){
+  const all = ranges(), el = $('rgList');
+  if (!all.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="rgt">저장된 활터 — 가까이 있으면 방향을 묻지 않고 바로 씁니다. 방향이 틀렸으면 지우고 다시 재세요.</div>'
+    + all.map((g, i) => `<div class="rgi"><span>${g.name.replace(/[<>&]/g, '')} · ${DIR16n(g.bearing)}</span><button class="btn" data-i="${i}">지우기</button></div>`).join('');
+  el.querySelectorAll('button').forEach(b => b.onclick = () => { const a = ranges(); a.splice(+b.dataset.i, 1); saveRanges(a); renderRgList(); toast('저장된 활터를 지웠습니다. 다음 날씨 읽기 때 방향을 다시 잽니다'); });
+}
 $('dirCancel').onclick = () => { stopCmp(); $('vDir').hidden = true; manual(); };
 function manual(){ S.wx = null; saveS(); ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true); setStep(2); }
 $('startYes').onclick = readWx;
 $('startNo').onclick = () => { $('vStart').hidden = true; };
-$('wxBtn').onclick = () => { $('startMsg').textContent = ''; $('vStart').hidden = false; };
+$('wxBtn').onclick = () => { $('startMsg').textContent = ''; renderRgList(); $('vStart').hidden = false; };
 
 
 // ---------- 바람 3D 보기 (v2 환경 화면을 옮겨 옴 · three.js는 처음 누를 때만 불러온다) ----------
@@ -1055,7 +1103,7 @@ async function open3d(){
 }
 function close3d(){ $('v3d').hidden = true; if (T3) T3.running = false; }
 $('b3d').onclick = open3d; $('c3d').onclick = close3d;
-$('wx3d').onclick = () => { $('startMsg').textContent = ''; $('vStart').hidden = false; };   // 3D 화면에서도 날씨 읽기 (받으면 3D가 바로 바뀜)
+$('wx3d').onclick = () => { $('startMsg').textContent = ''; renderRgList(); $('vStart').hidden = false; };   // 3D 화면에서도 날씨 읽기 (받으면 3D가 바로 바뀜)
 
 document.querySelectorAll('#v3d .viewbar [data-v]').forEach(b => b.onclick = () => T3 && T3.view(b.dataset.v));
 
