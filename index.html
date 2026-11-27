@@ -109,9 +109,26 @@ input[type=range]{width:100%;height:28px;accent-color:var(--ink);background:tran
 /* 길게 누를 때 복사·붙여넣기 메뉴나 글자 선택이 뜨지 않게 */
 html,body,main,.stage,#cv,header,.panel,.nudge{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+.pages{position:absolute;inset:0;display:flex;width:200%;transition:transform .28s ease}
+.page{position:relative;width:50%;height:100%;flex:none;overflow:hidden}
+#pg2{overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+.sj{max-width:560px;margin:0 auto;padding:14px 12px calc(20px + env(safe-area-inset-bottom))}
+.sj-h{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.sj-h b{font-size:17px}
+#sjSum{font-size:14px}#sjSum b{font-size:22px;color:var(--red)}
+.sjt{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 0 var(--line)}
+.sjt th,.sjt td{border:1px solid var(--line);text-align:center;padding:2px}
+.sjt th{font-size:12.5px;background:#f8f5ee;padding:6px 0}
+.sjt td.c{height:62px;cursor:pointer;position:relative}
+.sjt td.c svg{display:block;margin:0 auto;width:100%;height:58px}
+.sjt td.n{font-weight:800;font-size:16px;width:13%}
+.sjt td.n.full{color:var(--red)}
+.sjt .mk{font-size:24px;font-weight:800;line-height:58px}
+.sjt .mk.h{color:var(--red)}.sjt .mk.x{color:#8a8478}
+.sjt tr.cur th{background:#211c18;color:#fff}
 #toast{position:fixed;left:50%;top:calc(var(--hh) + 74px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(31,28,24,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
 #toast.on{opacity:1}
-@media (max-width:480px){.steps span{padding:4px 7px;font-size:11.5px}header h1{display:none}.sl{grid-template-columns:54px 1fr 84px}}
+@media (max-width:480px){.steps span{padding:4px 7px;font-size:11.5px}header h1{display:none}.sl{grid-template-columns:54px 1fr 84px}header .ic{width:35px;height:38px;font-size:15px}header{gap:4px;padding:0 6px}.wxcard small{display:none}}
 </style>
 </head>
 <body>
@@ -119,10 +136,11 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
   <div class="wxcard" id="wxCard"></div>
   <button class="ic" id="wxBtn" aria-label="주변 날씨 읽기" title="주변 날씨 읽기">📍</button>
   <button class="ic" id="b3d" aria-label="바람 3D 보기" title="바람 3D 보기" style="font-size:13px;font-weight:800">3D</button>
+  <button class="ic" id="pgBtn" aria-label="표잡기·시지 바꾸기" title="표잡기 ↔ 시지" style="font-size:12px;font-weight:800;padding:0">시지</button>
   <button class="ic" id="persBtn" aria-label="개인 기준" title="개인 기준">⚙</button>
 </header>
 <main>
-  <div class="stage">
+  <div class="stage"><div class="pages" id="pages"><div class="page" id="pg1">
     <canvas id="cv"></canvas>
 
     <!-- ② 과녁 상하좌우 바람 버튼: 누를 때마다 0.2 m/s, 누르고 있으면 계속 -->
@@ -147,6 +165,16 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
       <div id="chkBody"></div>
     </div>
   </div>
+  <!-- 옆으로 밀면 나오는 시지 -->
+  <div class="page" id="pg2">
+    <div class="sj">
+      <div class="sj-h"><b id="sjDate"></b><span class="grow"></span><span id="sjSum"></span></div>
+      <table class="sjt" id="sjTbl"></table>
+      <div class="hint" style="margin-top:8px">과녁 화면에서 <b>맞은 자리를 길게 누르면</b> 다음 칸에 자리와 함께 들어갑니다. 칸을 누르면 <b>○ 관중 → × 불 → 빈칸</b>으로 직접 바꿀 수 있습니다.</div>
+      <div class="row" style="margin-top:10px"><button class="btn" id="sjUndo">↶ 마지막 칸 지우기</button><span class="grow"></span><button class="btn" id="sjClr">시지 지우기</button></div>
+    </div>
+  </div>
+  </div></div>
 </main>
 
 <!-- ① 시작: 날씨 읽기 -->
@@ -237,7 +265,8 @@ const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 // 초기값: 사용자가 '지금 값을 초기값으로 고정'을 누르면 그 값이 초기값이 된다 (없으면 공장값)
 let DEF = load('gukgung3-def', FACT);
 let P = load('gukgung3-pers', DEF);
-const TODAY0 = () => ({ step: 2, pressure: 1013, tempC: 15, w: { x: 0, z: 0 }, wx: null, range: null, shots: [], hits: [] });
+const blankSheet = () => Array.from({ length: 9 }, () => Array(5).fill(null));
+const TODAY0 = () => ({ step: 2, pressure: 1013, tempC: 15, w: { x: 0, z: 0 }, wx: null, range: null, shots: [], hits: [], sheet: blankSheet(), date: null });
 let S = load('gukgung3-today', TODAY0());
 const saveP = () => store('gukgung3-pers', P), saveS = () => store('gukgung3-today', S);
 let guide = (() => { try { return localStorage.getItem('gukgung3-guide') !== '0'; } catch (e) { return true; } })();
@@ -535,7 +564,7 @@ function renderHits(){
   $('hitRow').innerHTML = H.length
     ? `<span class="grow">🎯 화살 <b>${Hn.length}발</b>${Hn.length >= 2 ? ` · 평균 ${hitWords(hitAvg(Hn))}` : ''}${nu ? ` <span style="color:var(--ink2)">(보정 반영 ${nu}발)</span>` : ''}</span><button class="btn" id="hitUndo">↶</button><button class="btn" id="hitClr">지우기</button>`
     : '<span class="grow">맞은 자리를 <b>길게 누르면</b> 화살이 기록됩니다</span>';
-  if (H.length) { $('hitUndo').onclick = () => { S.hits.pop(); saveS(); renderHits(); draw(); }; $('hitClr').onclick = () => { S.hits = []; saveS(); renderHits(); draw(); }; }
+  if (H.length) { $('hitUndo').onclick = () => { const h = S.hits.pop(); if (h) S.sheet.forEach(row => row.forEach((c, a) => { if (c && c.t === h.t) row[a] = null; })); saveS(); renderHits(); renderSheet(); draw(); }; $('hitClr').onclick = () => { S.hits = []; saveS(); renderHits(); draw(); }; }
   const pr = hitProposal(), box = $('hitAsk');
   if (!pr || hitNo === pr.sig || S.step !== 2) { box.hidden = true; return; }
   box.hidden = false;
@@ -560,7 +589,10 @@ cv.addEventListener('pointerdown', e => {
     if (!lp || !view) return;
     const r = cv.getBoundingClientRect(), q = view.inv(x0 - r.left, y0 - r.top), a = aim();
     S.hits = S.hits || [];
-    S.hits.push({ z: +q.z.toFixed(3), y: +q.y.toFixed(3), aim: a, w: { ...S.w }, p: S.pressure, kw: P.kw, kx: P.kx, perHpa: P.perHpa, perHpaLo: perOf(-1), t: Date.now() });
+    const hp = { z: +q.z.toFixed(3), y: +q.y.toFixed(3), aim: a, w: { ...S.w }, p: S.pressure, kw: P.kw, kx: P.kx, perHpa: P.perHpa, perHpaLo: perOf(-1), t: Date.now() };
+    S.hits.push(hp);
+    const nc = nextCell(); if (nc) { S.sheet[nc[0]][nc[1]] = { z: hp.z, y: hp.y, hit: isHit(hp), t: hp.t }; toast(`${nc[0] + 1}순 ${nc[1] + 1}시 ${isHit(hp) ? '관중 ○' : '불 ×'} — 옆으로 밀면 시지`); }
+    renderSheet();
     saveS(); try { navigator.vibrate && navigator.vibrate(25); } catch (er) {}
     renderHits(); draw(); lp = null;
   }, 450) };
@@ -612,7 +644,7 @@ $('persClose').onclick = closePers;
 
 $('persFactory').onclick = () => { P = { ...DEF }; saveP(); renderPers(); syncSliders(); draw(); toast('초기값으로 돌렸습니다'); };
 $('persFix').onclick = () => { DEF = { ...P }; store('gukgung3-def', DEF); toast(`지금 기준을 초기값으로 고정했습니다 (상하 ${cm(P.baseY)} · 좌우 ${cm(P.baseZ || 0)} · 고기압 ${Math.round(P.perHpa * 100)} · 저기압 ${Math.round(perOf(-1) * 100)} · 좌우바람 ${cm(P.kw)} · 앞뒤바람 ${cm(P.kx)} cm)`); };
-$('resetToday').onclick = () => { S = TODAY0(); saveS(); closePers(); setStep(2); renderHits(); toast('오늘 값만 지웠습니다 (개인 기준은 그대로)'); };
+$('resetToday').onclick = () => { S = TODAY0(); S.date = today(); saveS(); closePers(); setStep(2); renderHits(); renderSheet(); toast('오늘 값만 지웠습니다 (개인 기준은 그대로)'); };
 
 // ---------- 날씨 (GPS → Open-Meteo) ----------
 const DIR16 = ['북', '북북동', '북동', '동북동', '동', '동남동', '남동', '남남동', '남', '남남서', '남서', '서남서', '서', '서북서', '북서', '북북서'];
@@ -944,6 +976,70 @@ function update3d(){
   requestAnimationFrame(() => { const h = $('i3d').offsetHeight; $('v3d').style.setProperty('--nh', (h + 20) + 'px'); });
 }
 
+
+// ---------- 시지 (옆으로 밀면 나오는 두 번째 화면) ----------
+// 관중 = 과녁판(가로 2 m × 세로 2.67 m) 안에 맞음
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+if (!Array.isArray(S.sheet) || S.sheet.length !== 9) S.sheet = blankSheet();
+if (S.date !== today()) { if (S.date) { S.sheet = blankSheet(); S.hits = []; } S.date = today(); saveS(); }   // 날이 바뀌면 시지는 새로
+const isHit = p => Math.abs(p.z) <= TW / 2 && p.y >= 0 && p.y <= TH;
+function nextCell(){ for (let r = 0; r < 9; r++) for (let a = 0; a < 5; a++) if (!S.sheet[r][a]) return [r, a]; return null; }
+function cellSVG(c){
+  // 작은 과녁 위에 맞은 자리 (그림 범위: 좌우 ±1.6 m, 위아래 −0.6 ~ 3.3 m)
+  const W = 40, H = 50, SZ = 2.7, SY = 3.4, Y0 = -0.35, X = z => W / 2 + z / SZ * W, Y = y => H - (y - Y0) / SY * H, F = FACE;
+  const dz = clamp(c.z, -1.3, 1.3), dy = clamp(c.y, Y0 + 0.05, Y0 + SY - 0.05);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"><rect x="${X(-TW / 2)}" y="${Y(TH)}" width="${TW / SZ * W}" height="${TH / SY * H}" fill="#f7f5ef" stroke="#cfc6b6" stroke-width=".6"/><rect x="${X(-F.boxHalf)}" y="${Y(F.boxTop)}" width="${2 * F.boxHalf / SZ * W}" height="${(F.boxTop - F.boxBot) / SY * H}" fill="#211c18"/><rect x="${X(-F.bandHalf)}" y="${Y(F.bandTop)}" width="${2 * F.bandHalf / SZ * W}" height="${(F.bandTop - F.bandBot) / SY * H}" fill="#211c18"/><circle cx="${X(0)}" cy="${Y(CY)}" r="${F.r / SZ * W}" fill="#c8362b"/><circle cx="${X(dz)}" cy="${Y(dy)}" r="4" fill="${c.hit ? '#123d8a' : '#8a8478'}" stroke="#fff" stroke-width="1"/></svg>`;
+}
+function renderSheet(){
+  const dt = new Date(S.date + 'T00:00:00');
+  $('sjDate').textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일 시지`;
+  let hits = 0, shots = 0; const nc = nextCell();
+  let h = '<tr><th style="width:13%">순</th>' + [1, 2, 3, 4, 5].map(i => `<th>${i}시</th>`).join('') + '<th style="width:13%">중</th></tr>';
+  S.sheet.forEach((row, r) => {
+    let n = 0, m = 0;
+    const cells = row.map((c, a) => {
+      if (!c) return `<td class="c" data-r="${r}" data-a="${a}"></td>`;
+      m++; shots++; if (c.hit) { n++; hits++; }
+      return `<td class="c" data-r="${r}" data-a="${a}">${c.z != null ? cellSVG(c) : `<span class="mk ${c.hit ? 'h' : 'x'}">${c.hit ? '○' : '×'}</span>`}</td>`;
+    }).join('');
+    h += `<tr class="${nc && nc[0] === r ? 'cur' : ''}"><th>${r + 1}</th>${cells}<td class="n${n === 5 ? ' full' : ''}">${m ? n : ''}</td></tr>`;
+  });
+  $('sjTbl').innerHTML = h;
+  $('sjSum').innerHTML = shots ? `<b>${hits}중</b> / ${shots}시 · ${Math.round(hits / shots * 100)}%` : '아직 기록 없음';
+  $('sjTbl').querySelectorAll('td.c').forEach(td => td.onclick = () => {
+    const r = +td.dataset.r, a = +td.dataset.a, c = S.sheet[r][a];
+    // 빈칸 → ○ 관중 → × 불 → 빈칸 (자리 기록이 있는 칸은 관중/불 판정만 바꾸다가 빈칸으로)
+    if (!c) S.sheet[r][a] = { hit: true, t: Date.now() };
+    else if (c.hit) S.sheet[r][a] = { ...c, hit: false };
+    else { S.sheet[r][a] = null; if (c.t) { const i = (S.hits || []).findIndex(p => p.t === c.t); if (i >= 0) S.hits.splice(i, 1); } }
+    saveS(); renderSheet(); renderHits(); draw();
+  });
+  $('pgBtn').textContent = curPage ? '표' : '시지';
+}
+$('sjUndo').onclick = () => {
+  for (let r = 8; r >= 0; r--) for (let a = 4; a >= 0; a--) { const c = S.sheet[r][a]; if (c) { S.sheet[r][a] = null; if (c.t) { const i = (S.hits || []).findIndex(p => p.t === c.t); if (i >= 0) S.hits.splice(i, 1); } saveS(); renderSheet(); renderHits(); draw(); return; } }
+};
+let sjArm = null;
+$('sjClr').onclick = () => {
+  if (!sjArm) { $('sjClr').textContent = '한 번 더 누르면 지움'; sjArm = setTimeout(() => { sjArm = null; $('sjClr').textContent = '시지 지우기'; }, 2500); return; }
+  clearTimeout(sjArm); sjArm = null; $('sjClr').textContent = '시지 지우기'; S.sheet = blankSheet(); saveS(); renderSheet(); toast('시지를 지웠습니다');
+};
+// 화면 넘기기: 옆으로 밀기(스와이프) 또는 위 「시지」 버튼
+let curPage = 0;
+function goPage(n){
+  curPage = n; $('pages').style.transform = `translateX(${n ? -50 : 0}%)`;
+  if (n === 1) { renderSheet(); $('hitAsk').hidden = true; } else { renderHits(); draw(); }
+  renderSheet();
+}
+$('pgBtn').onclick = () => goPage(curPage ? 0 : 1);
+let sw = null;
+$('pages').addEventListener('pointerdown', e => { if (e.target.closest('button,input,.sheet')) { sw = null; return; } sw = { x: e.clientX, y: e.clientY, t: Date.now() }; }, true);
+$('pages').addEventListener('pointerup', e => {
+  const s = sw; sw = null; if (!s) return;
+  const dx = e.clientX - s.x, dy = e.clientY - s.y;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.8 && Date.now() - s.t < 700) goPage(dx < 0 ? 1 : 0);
+}, true);
+
 // ---------- 공통 ----------
 function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2800); }
 new ResizeObserver(() => draw()).observe(cv);
@@ -951,6 +1047,7 @@ $('guideBtn').style.opacity = guide ? 1 : 0.55;
 // 앱을 열면 늘 ①부터: 날씨를 읽을지 묻는다 (오늘 값은 남아 있어 아니오를 누르면 그대로 이어서)
 setStep(2);   // 날씨 읽기는 위쪽 📍 날씨 버튼으로 (선택)
 renderHits();
+renderSheet();
 }
 </script>
 <script>if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
