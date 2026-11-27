@@ -46,6 +46,7 @@ main{position:absolute;inset:var(--hh) 0 0 0;overflow:hidden}
 .wxcard .t b,.wxcard .t small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wxcard b{font-size:13.5px;line-height:1.25}
 .wxcard small{font-size:11px;color:var(--ink2);line-height:1.3}
+.wxcard .tmp{font-size:11px;font-weight:700;color:#b5532a;line-height:1.1;white-space:nowrap}
 .panel{position:absolute;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));padding:8px 10px;max-width:620px;margin:0 auto}
 .sl{display:grid;grid-template-columns:62px 1fr 92px;gap:8px;align-items:center;margin:2px 0}
 .sl label{font-size:13px;font-weight:700}
@@ -345,7 +346,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
     <div class="pbt">평소 보는 표 위치를 설정하세요.</div>
     <div class="sl"><label for="kB">상하 기준</label><input id="kB" type="range" min="-3" max="8" step="0.01"><output id="oB"></output></div>
     <div class="row bzfine"><button class="btn tog" id="byD10" title="10cm 아래로">▼10</button><button class="btn tog" id="byD" title="1cm 아래로">▼1</button><button class="btn tog" id="byU" title="1cm 위로">▲1</button><button class="btn tog" id="byU10" title="10cm 위로">▲10</button><span class="hint" style="align-self:center">cm</span></div>
-    <div class="hint" style="margin:-2px 0 6px 70px">평기압(1007~1019 hPa)일 때 겨냥 높이</div>
+    <div class="hint" style="margin:-2px 0 6px 70px">평기압·표준 공기(15 °C)·바람 없을 때 겨냥 높이</div>
     <div class="sl"><label for="kBZ">좌우 기준</label><input id="kBZ" type="range" min="-1" max="1" step="0.01" list="bzTicks"><output id="oBZ"></output></div>
     <datalist id="bzTicks"><option value="0"></option></datalist>
     <div class="row bzfine"><button class="btn tog" id="bzL">◀ 1cm</button><button class="btn tog" id="bz0">가운데(0)</button><button class="btn tog" id="bzR">1cm ▶</button></div>
@@ -354,13 +355,15 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
     <div class="pbox">
     <div class="pbt">기압과 바람에 밀리는 정도의 간격을 조절합니다. (1m/s당 한칸 이동)</div>
     <div class="sl"><label for="kP">고기압</label><input id="kP" type="range" min="1" max="60" step="1"><output id="oKP"></output></div>
-    <div class="hint" style="margin:-2px 0 6px 70px">1019 hPa를 넘은 1 hPa당 위로 이동 (공기 밀도가 높아져 따로 맞춤)</div>
+    <div class="hint" style="margin:-2px 0 6px 70px">주변 지역(반경 200 km)보다 기압이 높은 1 hPa당 위로 이동</div>
     <div class="sl"><label for="kPL">저기압</label><input id="kPL" type="range" min="1" max="60" step="1"><output id="oKPL"></output></div>
-    <div class="hint" style="margin:-2px 0 6px 70px">1007 hPa보다 낮은 1 hPa당 아래로 이동 (공기 밀도가 줄어 따로 맞춤)</div>
+    <div class="hint" style="margin:-2px 0 6px 70px">주변 지역보다 기압이 낮은 1 hPa당 아래로 이동</div>
     <div class="sl"><label for="kZ">좌우</label><input id="kZ" type="range" min="5" max="50" step="1"><output id="oKZ"></output></div>
     <div class="hint" style="margin:-2px 0 6px 70px">옆바람 1 m/s당 좌우 이동</div>
     <div class="sl"><label for="kX">앞뒤</label><input id="kX" type="range" min="5" max="50" step="1"><output id="oKX"></output></div>
     <div class="hint" style="margin:-2px 0 6px 70px">맞바람·순풍 1 m/s당 위아래 이동</div>
+    <div class="sl"><label for="kR">공기 밀도</label><input id="kR" type="range" min="0" max="30" step="1"><output id="oKR"></output></div>
+    <div class="hint" style="margin:-2px 0 6px 70px" id="rhoHint">공기가 표준보다 1% 무거울 때 위로 이동 (춥고 기압이 높을수록 무거움)</div>
     </div>
     <div class="perstut" id="fixTut" hidden><div class="t">👇 지금 값을 초기값으로 고정을 눌러주세요</div><div class="s">상하 기준과 좌우 기준을 모두 움직였습니다. 아래 <b>지금 값을 초기값으로 고정</b>을 누르면 이 기준표가 저장되어, 초기화해도 이 자리로 돌아옵니다.</div></div>
     <div class="row" style="margin-top:10px"><button class="btn red" id="persFix">지금 값을 초기값으로 고정</button><button class="btn" id="persFactory">초기값으로</button></div>
@@ -401,10 +404,10 @@ const fmt = (v, d = 1) => (Math.round(v * 10 ** d) / 10 ** d).toFixed(d);
 const TW = 2, TH = 2.67;
 const FACE = { bandTop: TH * 0.877, bandBot: TH * 0.77, bandHalf: 0.72, boxTop: TH * 0.67, boxBot: TH * 0.12, boxHalf: 0.70, r: 0.50 };
 const CY = (FACE.boxTop + FACE.boxBot) / 2;   // 홍심 중심
-const P_LO = 1007, P_HI = 1019;
+const RHO0 = 1.225;   // 표준 공기 밀도 (15 °C, 1013.25 hPa) kg/m³
 
 // ---------- 저장: 개인 기준(따로 영구 보관) / 오늘 상태 ----------
-const FACT = { baseY: 1.20, baseZ: 0, perHpa: 0.40, perHpaLo: 0.20, kw: 0.25, kx: 0.25 };   // 처음 쓰는 사람의 기본값 (상하 120 · 좌우 가운데 · 고기압 40 · 저기압 20 · 좌우 25 · 앞뒤 25 cm)   // 저기압 쪽은 공기가 덜 저항하는 만큼 간격을 따로(기본 작게)
+const FACT = { baseY: 1.20, baseZ: 0, perHpa: 0.40, perHpaLo: 0.20, kw: 0.25, kx: 0.25, kRho: 0.10 };   // 처음 쓰는 사람의 기본값 (상하 120 · 좌우 가운데 · 고기압 40 · 저기압 20 · 좌우 25 · 앞뒤 25 cm)   // 저기압 쪽은 공기가 덜 저항하는 만큼 간격을 따로(기본 작게)
 const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ? Object.assign({}, d, v) : { ...d }; } catch (e) { return { ...d }; } };
 const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 // 초기값: 사용자가 '지금 값을 초기값으로 고정'을 누르면 그 값이 초기값이 된다 (없으면 공장값)
@@ -413,18 +416,24 @@ let P = load('gukgung3-pers', DEF);
 // 기기가 저장 공간을 정리할 때 이 앱 기록은 지우지 않도록 요청 (지원하는 브라우저에서만)
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
 const blankSheet = () => Array.from({ length: 9 }, () => Array(5).fill(null));
-const TODAY0 = () => ({ step: 2, pressure: 1013, tempC: 15, w: { x: 0, z: 0 }, wx: null, range: null, shots: [], hits: [], sheet: blankSheet(), date: null });
+const TODAY0 = () => ({ step: 2, pressure: 1013, pRef: null, rho: null, tempC: 15, w: { x: 0, z: 0 }, wx: null, range: null, shots: [], hits: [], sheet: blankSheet(), date: null });
 let S = load('gukgung3-today', TODAY0());
 const saveP = () => store('gukgung3-pers', P), saveS = () => store('gukgung3-today', S);
 let guide = (() => { try { return localStorage.getItem('gukgung3-guide') !== '0'; } catch (e) { return true; } })();
 
 // ---------- 표 계산 ----------
-const excess = p => p > P_HI ? p - P_HI : p < P_LO ? p - P_LO : 0;
+// 고기압·저기압은 주변 지역(반경 200 km 8곳 평균)과 비교해서 정한다. 주변 값이 없으면 1013 hPa와 비교
+const REF = () => S.pRef ?? 1013;
+const excess = (p, r = REF()) => { const d = Math.round((p - r) * 10) / 10; return Math.abs(d) >= 1 ? d : 0; };   // ±1 hPa 안은 평기압
+const exV = () => excess(S.pressure) * 2.5;   // 하늘·바람 그림의 세기 (주변 대비 차이는 작아서 키워 그림)
+// 공기 밀도: 무거울수록(춥고 기압이 높을수록) 화살이 덜 가므로 표를 위로
+const rhoPct = (r = S.rho) => r ? (r / RHO0 - 1) * 100 : 0;
+const dShift = () => (P.kRho ?? 0.10) * rhoPct();
 const perOf = (ex, o = P) => ex < 0 ? (o.perHpaLo ?? o.perHpa) : o.perHpa;   // 고기압/저기압 간격을 따로
 const pShift = () => perOf(excess(S.pressure)) * excess(S.pressure);          // 고기압 → 화살이 덜 가므로 위로, 저기압 → 아래로
-const center0 = () => ({ z: P.baseZ || 0, y: P.baseY + pShift() });      // 바람 안내선 0 = 무풍 기준 표 (사람마다 좌우로 쏠린 기준표 반영)
+const center0 = () => ({ z: P.baseZ || 0, y: P.baseY + pShift() + dShift() });      // 바람 안내선 0 = 무풍 기준 표 (사람마다 좌우로 쏠린 기준표 반영)
 const aim = () => { const c = center0(); return { z: c.z - P.kw * S.w.z, y: c.y - P.kx * S.w.x }; };   // 바람이 불어오는 쪽으로
-const pClass = p => p < 995 ? '강한 저기압' : p < P_LO ? '저기압' : p <= P_HI ? '평기압' : p <= 1030 ? '고기압' : '강한 고기압';
+const pClass = p => { const e = excess(p); return e <= -5 ? '강한 저기압' : e < 0 ? '저기압' : e === 0 ? '평기압' : e < 5 ? '고기압' : '강한 고기압'; };
 const cm = m => Math.round(m * 100);
 function aimWords(a){
   const dy = a.y - P.baseY, dz = a.z - (P.baseZ || 0), parts = [];
@@ -523,10 +532,10 @@ function mark(g, x, y, col, t){
 
 // ---------- 위 날씨 카드: 기압계 + 바람 화살표 ----------
 function gaugeSVG(p){
-  const t = clamp((p - 960) / 90, 0, 1), ang = Math.PI * (1 - t), nx = 26 + 20 * Math.cos(ang), ny = 28 - 20 * Math.sin(ang);
+  const t = clamp((p - REF()) / 16 + 0.5, 0, 1), ang = Math.PI * (1 - t), nx = 26 + 20 * Math.cos(ang), ny = 28 - 20 * Math.sin(ang);
   const arc = (a0, a1, col) => { const x0 = 26 + 22 * Math.cos(Math.PI * (1 - a0)), y0 = 28 - 22 * Math.sin(Math.PI * (1 - a0)), x1 = 26 + 22 * Math.cos(Math.PI * (1 - a1)), y1 = 28 - 22 * Math.sin(Math.PI * (1 - a1)); return `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} A22 22 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}" stroke="${col}" stroke-width="5" fill="none"/>`; };
-  const f = v => (v - 960) / 90;
-  return `<svg width="40" height="26" viewBox="0 0 52 34">${arc(0, f(P_LO), '#5b86b8')}${arc(f(P_LO), f(P_HI), '#9aa48a')}${arc(f(P_HI), 1, '#d9901a')}<line x1="26" y1="28" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="#211c18" stroke-width="2.5" stroke-linecap="round"/><circle cx="26" cy="28" r="3" fill="#211c18"/></svg>`;
+  const f = v => (v - REF()) / 16 + 0.5;
+  return `<svg width="40" height="26" viewBox="0 0 52 34">${arc(0, f(REF() - 1), '#5b86b8')}${arc(f(REF() - 1), f(REF() + 1), '#9aa48a')}${arc(f(REF() + 1), 1, '#d9901a')}<line x1="26" y1="28" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="#211c18" stroke-width="2.5" stroke-linecap="round"/><circle cx="26" cy="28" r="3" fill="#211c18"/></svg>`;
 }
 function windSVG(w){
   const sp = Math.hypot(w.x, w.z), col = sp < 1.6 ? '#3b82c4' : sp < 3.4 ? '#d9901a' : '#d2382c';
@@ -545,7 +554,7 @@ function shortWind(w){
 function renderWxCard(){
   if (T3 && !$('v3d').hidden) update3d();
   const L = S.wx, src = L ? `${(L.time || '').slice(11, 16)} ${L.range ? L.range + ' · ' : ''}${DIR16n(L.dir)}풍 ${fmt(L.v)} m/s${L.gust != null ? ` (돌풍 ${fmt(L.gust)})` : ''}` : '날씨 직접 맞추기';
-  $('wxCard').innerHTML = `${gaugeSVG(S.pressure)}<div class="t"><b>${S.pressure} hPa</b><small>${pClass(S.pressure)}</small></div>${windSVG(S.w)}<div class="t" style="flex:1"><b>${shortWind(S.w)}</b><small>${src}</small></div>`;
+  $('wxCard').innerHTML = `${gaugeSVG(S.pressure)}<div class="t"><span class="tmp">${S.wx ? `${S.tempC}°C` : '기온 —'}</span><b>${S.pressure} hPa</b><small>${pClass(S.pressure)}${S.pRef != null ? ` · 주변 ${Math.round(S.pRef)}` : ''}</small></div>${windSVG(S.w)}<div class="t" style="flex:1"><b>${shortWind(S.w)}</b><small>${src}</small></div>`;
 }
 
 // ---------- 단계 전환 ----------
@@ -575,7 +584,7 @@ $('guideBtn').onclick = () => { guide = !guide; try { localStorage.setItem('gukg
 // ---------- 날씨 그림: 하늘(기압) + 바람결·비(움직임) ----------
 const lerpC = (a, b, k) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',')})`;
 function drawSky(g, w, groundY){
-  const ex = excess(S.pressure), f = clamp(ex / 20, -1, 1);
+  const ex = exV(), f = clamp(ex / 20, -1, 1);
   const top = f >= 0 ? lerpC([205, 221, 232], [120, 182, 236], f) : lerpC([205, 221, 232], [128, 136, 145], -f);
   const bot = f >= 0 ? lerpC([236, 231, 220], [226, 239, 248], f) : lerpC([236, 231, 220], [196, 199, 201], -f);
   const gr = g.createLinearGradient(0, 0, 0, Math.max(40, groundY)); gr.addColorStop(0, top); gr.addColorStop(1, bot);
@@ -623,7 +632,7 @@ function fxLoop(now){
   const g = fx.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
   if (!run) { fxLast = now; return; }
   const dt = Math.min(0.05, (now - (fxLast || now)) / 1000); fxLast = now;
-  const w = S.w, sp = Math.hypot(w.x, w.z), ex = excess(S.pressure);
+  const w = S.w, sp = Math.hypot(w.x, w.z), ex = exV();
   // 바람결: 바람이 불어 가는 방향으로 흐른다 (맞바람 ↓, 뒷바람 ↑, 왼쪽바람 →, 오른쪽바람 ←)
   if (sp >= 0.2) {
     const a = Math.min(0.8, 0.38 + sp * 0.08) * 0.25;   // 처음보다 1/4 진하기 (옅게)
@@ -738,24 +747,24 @@ function placeNudges(){
 
 
 // 기압풍 버튼: 누르는 바람(고기압 쪽, 표가 위로) / 올리는 바람(저기압 쪽, 표가 아래로)
-// 평기압(1007~1019)은 표가 움직이지 않는 구간이라 한 번에 건너뛰고, 반대쪽에서 들어올 때는 평기압(1013)에서 한 번 멈춘다
-function pStep(p, up){
-  if (up) return p >= P_HI ? p + 1 : p >= P_LO ? P_HI + 1 : p + 1 >= P_LO ? 1013 : p + 1;
-  return p <= P_LO ? p - 1 : p <= P_HI ? P_LO - 1 : p - 1 <= P_HI ? 1013 : p - 1;
+function pStep(p, up){   // 평기압(주변 ±1 hPa)은 한 번에 건너뛰고, 반대쪽에서 들어올 때는 평기압에서 한 번 멈춘다
+  const e = excess(p), r = REF();
+  if (up) return e > 0 ? p + 1 : e === 0 ? Math.ceil(r + 1) : excess(p + 1) === 0 ? Math.round(r) : p + 1;
+  return e < 0 ? p - 1 : e === 0 ? Math.floor(r - 1) : excess(p - 1) === 0 ? Math.round(r) : p - 1;
 }
 
 // 기압별 날씨 징후 — 기압풍 버튼을 누를 때 잠깐 보여 준다
 const P_SIGNS = [
-  [990, '강한 저기압', '비바람과 센 돌풍, 구름이 낮고 빠르게 흐름 · 화살이 많이 뜸'],
-  [1000, '저기압 발달', '흐리고 비가 올 수 있음, 바람 방향이 자주 바뀌고 돌풍 · 화살이 더 나감'],
-  [P_LO, '약한 저기압', '구름이 늘고 눅눅함, 바람이 들쭉날쭉 · 화살이 조금 더 나감'],
-  [P_HI + 1, '평기압', '보통 날씨, 구름 조금 · 기준표 그대로'],
-  [1030, '고기압', '맑고 시야가 좋음, 바람이 잔잔하거나 일정 · 화살이 덜 나감'],
+  [-6, '강한 저기압', '비바람과 센 돌풍, 구름이 낮고 빠르게 흐름 · 화살이 많이 뜸'],
+  [-3, '저기압 발달', '흐리고 비가 올 수 있음, 바람 방향이 자주 바뀌고 돌풍 · 화살이 더 나감'],
+  [0, '약한 저기압', '구름이 늘고 눅눅함, 바람이 들쭉날쭉 · 화살이 조금 더 나감'],
+  [0.5, '평기압', '보통 날씨, 구름 조금 · 기준표 그대로'],
+  [6, '고기압', '맑고 시야가 좋음, 바람이 잔잔하거나 일정 · 화살이 덜 나감'],
   [9999, '강한 고기압', '하늘이 높고 매우 맑고 건조, 아침저녁 쌀쌀 · 화살이 많이 덜 나감']
 ];
 function showPressureSign(p){
-  const s = P_SIGNS.find(x => p < x[0]), el = $('windSign'), ex = excess(p);
-  el.innerHTML = `<b>${p} hPa · ${s[1]}${ex ? ` (${ex > 0 ? '+' : ''}${ex})` : ''}</b><small>${s[2]}</small>`;
+  const ex = excess(p), s = P_SIGNS.find(x => ex < x[0]), el = $('windSign');
+  el.innerHTML = `<b>${p} hPa · ${s[1]}${ex ? ` (주변보다 ${ex > 0 ? '+' : ''}${ex})` : ''}</b><small>${s[2]}</small>`;
   el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
   clearTimeout(signT); signT = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 200); }, 1800);
 }
@@ -841,11 +850,11 @@ function hitProposal(){
     else { const v = clamp((P.baseZ || 0) - mz, -1, 1); out.push({ key: 'baseZ', name: '기준 좌우', from: cm(P.baseZ || 0), to: cm(v), v, unit: 'cm (+오른쪽)' }); }
   }
   if (Math.abs(my) >= 0.2 && same(dy, my)) {
-    const fb = H.filter(p => Math.abs(p.w.x) >= 0.5), pr = H.filter(p => excess(p.p) !== 0);
+    const fb = H.filter(p => Math.abs(p.w.x) >= 0.5), pr = H.filter(p => excess(p.p, p.pr) !== 0);
     if (fb.length >= Math.ceil(n / 2)) { const k = clamp(fb.reduce((s, p) => s + (p.kx * p.w.x + (p.y - CY)) / p.w.x, 0) / fb.length, 0.05, 0.5); if (Math.abs(k - P.kx) >= 0.01) out.push({ key: 'kx', name: '앞뒤 간격', from: cm(P.kx), to: cm(k), v: k, unit: 'cm/(m/s)' }); }
     else if (pr.length >= Math.ceil(n / 2)) {
-      const lo = pr.filter(p => excess(p.p) < 0).length > pr.length / 2, grp = pr.filter(p => (excess(p.p) < 0) === lo), key = lo ? 'perHpaLo' : 'perHpa';
-      const k = clamp(grp.reduce((s, p) => s + (perOf(excess(p.p), p) * excess(p.p) - (p.y - CY)) / excess(p.p), 0) / grp.length, 0.01, 0.6), kr = Math.max(1, Math.round(k * 100)) / 100;
+      const lo = pr.filter(p => excess(p.p, p.pr) < 0).length > pr.length / 2, grp = pr.filter(p => (excess(p.p, p.pr) < 0) === lo), key = lo ? 'perHpaLo' : 'perHpa';
+      const k = clamp(grp.reduce((s, p) => s + (perOf(excess(p.p, p.pr), p) * excess(p.p, p.pr) - (p.y - CY)) / excess(p.p, p.pr), 0) / grp.length, 0.01, 0.6), kr = Math.max(1, Math.round(k * 100)) / 100;
       out.push({ key, name: lo ? '저기압 간격' : '고기압 간격', from: Math.round(perOf(lo ? -1 : 1) * 100), to: Math.round(kr * 100), v: kr, unit: 'cm/hPa' });
     }
     else { const v = clamp(P.baseY - my, -3, 8); out.push({ key: 'baseY', name: '상하 기준', from: cm(P.baseY), to: cm(v), v, unit: 'cm' }); }
@@ -898,7 +907,7 @@ cv.addEventListener('pointerdown', e => {
     if (!lp || !view) return;
     const r = cv.getBoundingClientRect(), q = view.inv(x0 - r.left, y0 - r.top), a = aim();
     S.hits = S.hits || [];
-    const hp = { z: +q.z.toFixed(3), y: +q.y.toFixed(3), aim: a, w: { ...S.w }, p: S.pressure, kw: P.kw, kx: P.kx, perHpa: P.perHpa, perHpaLo: perOf(-1), t: Date.now() };
+    const hp = { z: +q.z.toFixed(3), y: +q.y.toFixed(3), aim: a, w: { ...S.w }, p: S.pressure, pr: REF(), kw: P.kw, kx: P.kx, perHpa: P.perHpa, perHpaLo: perOf(-1), t: Date.now() };
     S.hits.push(hp);
     const nc = nextCell(); if (nc) { S.sheet[nc[0]][nc[1]] = { z: hp.z, y: hp.y, hit: isHit(hp), t: hp.t }; toast(`${nc[0] + 1}순 ${nc[1] + 1}시 ${isHit(hp) ? '관중 ○' : '불 ×'} — 옆으로 밀면 습사 기록`); }
     renderSheet();
@@ -934,11 +943,13 @@ function renderPers(){
   $('kPL').value = Math.round(perOf(-1) * 100); $('oKPL').textContent = `${Math.round(perOf(-1) * 100)} cm`;
   $('kZ').value = cm(P.kw); $('oKZ').textContent = `${cm(P.kw)} cm`;
   $('kX').value = cm(P.kx); $('oKX').textContent = `${cm(P.kx)} cm`;
+  $('kR').value = cm(P.kRho ?? 0.10); $('oKR').textContent = `${cm(P.kRho ?? 0.10)} cm`;
+  $('rhoHint').textContent = `공기가 표준보다 1% 무거울 때 위로 이동 (춥고 기압이 높을수록 무거움)${S.rho ? ` · 오늘 ${S.rho.toFixed(3)} kg/m³ (${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%)` : ''}`;
 }
-['kB', 'kBZ', 'kP', 'kPL', 'kZ', 'kX'].forEach(id => $(id).addEventListener('input', () => {
+['kB', 'kBZ', 'kP', 'kPL', 'kZ', 'kX', 'kR'].forEach(id => $(id).addEventListener('input', () => {
   P.baseY = +$('kB').value;
   P.baseZ = Math.abs(+$('kBZ').value) < 0.03 ? 0 : +$('kBZ').value;   // 가운데 ±3 cm는 0에 붙인다
-  P.perHpa = Math.round(+$('kP').value) / 100; P.perHpaLo = Math.round(+$('kPL').value) / 100; P.kw = +$('kZ').value / 100; P.kx = +$('kX').value / 100;
+  P.perHpa = Math.round(+$('kP').value) / 100; P.perHpaLo = Math.round(+$('kPL').value) / 100; P.kw = +$('kZ').value / 100; P.kx = +$('kX').value / 100; P.kRho = +$('kR').value / 100;
   saveP(); renderPers(); if (S.step === 2) { syncSliders(); renderHits(); } if (S.step === 3 && S.shots.length) renderCheck(); draw();
 }));
 
@@ -972,20 +983,38 @@ function getPos(){ return new Promise((res, rej) => { if (!navigator.geolocation
 async function fetchWx(pos){
   const ac = new AbortController(), t = setTimeout(() => ac.abort(), 12000);
   try {
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.lat.toFixed(4)}&longitude=${pos.lon.toFixed(4)}&current=pressure_msl,temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms&timezone=auto`, { signal: ac.signal, cache: 'no-store' });
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.lat.toFixed(4)}&longitude=${pos.lon.toFixed(4)}&current=pressure_msl,surface_pressure,temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms&timezone=auto`, { signal: ac.signal, cache: 'no-store' });
     const c = (await r.json()).current; if (!c || c.pressure_msl == null) throw 0;
-    return { time: c.time, p: c.pressure_msl, t: c.temperature_2m, v: c.wind_speed_10m, dir: c.wind_direction_10m, gust: c.wind_gusts_10m };
+    const wx = { time: c.time, p: c.pressure_msl, t: c.temperature_2m, v: c.wind_speed_10m, dir: c.wind_direction_10m, gust: c.wind_gusts_10m, rh: c.relative_humidity_2m, ps: c.surface_pressure };
+    wx.rho = airDensity(wx.ps ?? wx.p, wx.t, wx.rh);
+    try { wx.pRef = await ringPressure(pos, ac.signal); } catch (e) { wx.pRef = null; }
+    return wx;
   } finally { clearTimeout(t); }
+}
+// 공기 밀도 (습도 반영): 건조 공기 + 수증기, 실제 지면 기압 기준
+function airDensity(pHpa, tC, rh){
+  if (pHpa == null || tC == null) return null;
+  const T = tC + 273.15, es = 6.1078 * Math.pow(10, 7.5 * tC / (tC + 237.3)), pv = (rh ?? 60) / 100 * es, pd = pHpa - pv;
+  return (pd * 100) / (287.058 * T) + (pv * 100) / (461.495 * T);
+}
+// 주변 기압: 지금 자리에서 200 km 떨어진 8방향 지점의 해면기압 평균
+async function ringPressure(pos, signal){
+  const R = 200, lat = [], lon = [];
+  for (let k = 0; k < 8; k++) { const b = k * Math.PI / 4; lat.push((pos.lat + R / 111.2 * Math.cos(b)).toFixed(3)); lon.push((pos.lon + R / (111.2 * Math.cos(pos.lat * Math.PI / 180)) * Math.sin(b)).toFixed(3)); }
+  const j = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.join(',')}&longitude=${lon.join(',')}&current=pressure_msl&timezone=auto`, { signal, cache: 'no-store' })).json();
+  const v = (Array.isArray(j) ? j : [j]).map(x => x && x.current && x.current.pressure_msl).filter(x => x != null);
+  if (v.length < 5) throw 0;
+  return Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10;
 }
 function applyWx(wx, rg){
   const phi = (wx.dir - rg.bearing) * Math.PI / 180;   // 풍향(불어오는 쪽) − 과녁 방향
-  S.pressure = clamp(Math.round(wx.p), 960, 1050); S.tempC = Math.round(wx.t ?? 15);
+  S.pressure = clamp(Math.round(wx.p), 960, 1050); S.tempC = Math.round(wx.t ?? 15); S.pRef = wx.pRef ?? null; S.rho = wx.rho ?? null;
   S.w = { x: +clamp(-wx.v * Math.cos(phi), -8, 8).toFixed(1), z: +clamp(-wx.v * Math.sin(phi), -8, 8).toFixed(1) };
   S.wx = { ...wx, range: rg.name }; S.range = rg.id; saveS();
   const all = ranges(), it = all.find(g => g.id === rg.id); if (it) { it.used = Date.now(); saveRanges(all); }
   ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true);
   setStep(2);
-  toast(`${rg.name}: ${S.pressure} hPa · ${windWords(S.w)} 를 넣었습니다`);
+  toast(`${rg.name}: ${S.tempC}°C · ${S.pressure} hPa (${S.pRef != null ? `주변 ${Math.round(S.pRef)} → ${pClass(S.pressure)}` : '주변 비교 못함'}) · ${windWords(S.w)} 를 넣었습니다`);
   window.tutAfterWx && window.tutAfterWx();
 }
 let pend = null;
@@ -1079,7 +1108,7 @@ function renderRgList(){
   el.querySelectorAll('button').forEach(b => b.onclick = () => { const a = ranges(); a.splice(+b.dataset.i, 1); saveRanges(a); renderRgList(); toast('저장된 활터를 지웠습니다. 다음 날씨 읽기 때 방향을 다시 잽니다'); });
 }
 $('dirCancel').onclick = () => { stopCmp(); $('vDir').hidden = true; manual(); };
-function manual(){ S.wx = null; saveS(); ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true); setStep(2); }
+function manual(){ S.wx = null; S.pRef = null; S.rho = null; saveS(); ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true); setStep(2); }
 $('startYes').onclick = readWx;
 $('startNo').onclick = () => { $('vStart').hidden = true; };
 $('wxBtn').onclick = () => { $('startMsg').textContent = ''; renderRgList(); $('vStart').hidden = false; };
@@ -1272,10 +1301,10 @@ function path3(hit, apex, bend){
 }
 function update3d(){
   if (!T3) return;
-  const T = T3, w = S.w, ex = excess(S.pressure), wy = clamp(-ex * 0.05, -1.5, 1.5);
+  const T = T3, w = S.w, ex = exV(), wy = clamp(-ex * 0.05, -1.5, 1.5);
   T.wind = { x: w.x, y: wy, z: w.z };
   // 하늘색: 고기압은 맑고 파랗게, 저기압은 흐리고 회색으로
-  const f = clamp((S.pressure - 1013) / 30, -1, 1), base = new THREE.Color(0xcfdde6), c = f >= 0 ? base.lerp(new THREE.Color(0xb3d3ef), f) : base.lerp(new THREE.Color(0xaeb3b8), -f);
+  const f = clamp(exV() / 20, -1, 1), base = new THREE.Color(0xcfdde6), c = f >= 0 ? base.lerp(new THREE.Color(0xb3d3ef), f) : base.lerp(new THREE.Color(0xaeb3b8), -f);
   T.scene.background.copy(c); T.scene.fog.color.copy(c);
   // 바람 색·풍향 자루
   const sp = Math.hypot(w.x, w.z), yawA = Math.atan2(-w.z, w.x), s3 = Math.hypot(w.x, wy, w.z);
