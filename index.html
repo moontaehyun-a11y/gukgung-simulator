@@ -193,6 +193,13 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 #tut .card .s{font-size:14px;line-height:1.55;color:var(--ink)}
 #tut .card .row{margin-top:12px}
 @media (prefers-reduced-motion:reduce){#tut .hole,#tut .arw{animation:none}}
+#vPers .perstut{border:2px solid #e0352b;background:#fff3f1;border-radius:10px;padding:9px 11px;margin:2px 0 8px}
+#vPers .perstut .t{font-size:14px;font-weight:800;color:#c8281f}
+#vPers .perstut .s{font-size:12.5px;line-height:1.5;margin:3px 0 7px}
+#vPers .pbox{border:2px solid transparent;border-radius:10px;padding:4px 6px 2px;margin:0 -8px 2px}
+#vPers .sheet.tut .pbox{border-color:#e0352b;background:rgba(224,53,43,.05);animation:pboxPulse 1.3s ease-in-out infinite}
+@keyframes pboxPulse{50%{box-shadow:0 0 0 3px rgba(224,53,43,.25)}}
+@media (prefers-reduced-motion:reduce){#vPers .sheet.tut .pbox{animation:none}}
 </style>
 </head>
 <body>
@@ -304,13 +311,18 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
   <div class="sheet">
     <div class="row ph"><h2 class="grow">⚙ 개인 기준 (표 간격)</h2><button class="btn pri" id="persClose">닫기</button></div>
     <p class="hint">슬라이더대로 옮긴 표가 실제와 맞지 않으면 여기서 간격을 고칩니다. 이 값은 이 기기에 따로 저장되어 <b>오늘 값을 지워도 그대로</b> 남습니다.</p>
+    <div class="perstut" id="persTut" hidden><div class="t">👉 평소에 자신이 보는 표로 위치를 맞추세요</div><div class="s">바람이 없을 때의 기준입니다. 빨간 네모 안의 <b>상하 기준</b>과 <b>좌우 기준</b>을 맞추세요.</div><button class="btn red" id="persTutOk">알겠어요</button></div>
+    <div class="pbox">
     <div class="sl"><label for="kB">상하 기준</label><input id="kB" type="range" min="-3" max="8" step="0.01"><output id="oB"></output></div>
     <div class="row bzfine"><button class="btn tog" id="byD10" title="10cm 아래로">▼10</button><button class="btn tog" id="byD" title="1cm 아래로">▼1</button><button class="btn tog" id="byU" title="1cm 위로">▲1</button><button class="btn tog" id="byU10" title="10cm 위로">▲10</button><span class="hint" style="align-self:center">cm</span></div>
     <div class="hint" style="margin:-2px 0 6px 70px">평기압(1007~1019 hPa)일 때 겨냥 높이</div>
-    <div class="sl"><label for="kBZ">기준 좌우</label><input id="kBZ" type="range" min="-1" max="1" step="0.01" list="bzTicks"><output id="oBZ"></output></div>
+    </div>
+    <div class="pbox">
+    <div class="sl"><label for="kBZ">좌우 기준</label><input id="kBZ" type="range" min="-1" max="1" step="0.01" list="bzTicks"><output id="oBZ"></output></div>
     <datalist id="bzTicks"><option value="0"></option></datalist>
     <div class="row bzfine"><button class="btn tog" id="bzL">◀ 1cm</button><button class="btn tog" id="bz0">가운데(0)</button><button class="btn tog" id="bzR">1cm ▶</button></div>
     <div class="hint" style="margin:-2px 0 6px 70px">바람이 없어도 표가 한쪽으로 쏠리는 분: 기준표를 좌우로 옮깁니다</div>
+    </div>
     <div class="sl"><label for="kP">고기압</label><input id="kP" type="range" min="1" max="60" step="1"><output id="oKP"></output></div>
     <div class="hint" style="margin:-2px 0 6px 70px">1019 hPa를 넘은 1 hPa당 위로 이동 (공기 밀도가 높아져 따로 맞춤)</div>
     <div class="sl"><label for="kPL">저기압</label><input id="kPL" type="range" min="1" max="60" step="1"><output id="oKPL"></output></div>
@@ -1433,12 +1445,23 @@ $('pages').addEventListener('pointerup', e => {
     card.style.top = (r.bottom + 92) + 'px';
   };
   const done = () => { T.hidden = true; try { localStorage.setItem('gukgung3-tut', '1'); } catch (e) {} };
-  const open = () => { done(); btn.click(); };
+  const open = () => { done(); window.persTutNext = true; btn.click(); };
   window.showTut = () => { T.hidden = false; place(); };
   T.querySelector('.hole').onclick = open; $('tutGo').onclick = open; $('tutLater').onclick = done;
   btn.addEventListener('click', () => { if (!T.hidden) done(); });
   addEventListener('resize', place); if (window.visualViewport) visualViewport.addEventListener('resize', place);
   if (!seen) setTimeout(window.showTut, 2100);
+})();
+// 개인 기준을 처음 펼치면: 상하·좌우 기준을 빨간 네모로 짚어 준다
+(() => {
+  const box = $('persTut'), sheet = box.closest('.sheet');
+  let seen = false; try { seen = localStorage.getItem('gukgung3-perstut') === '1'; } catch (e) {}
+  const hide = () => { if (box.hidden) return; box.hidden = true; sheet.classList.remove('tut'); seen = true; try { localStorage.setItem('gukgung3-perstut', '1'); } catch (e) {} };
+  $('persBtn').addEventListener('click', () => {
+    if (seen && !window.persTutNext) return; window.persTutNext = false;
+    box.hidden = false; sheet.classList.add('tut'); sheet.scrollTop = 0;
+  });
+  $('persTutOk').onclick = hide; $('persClose').addEventListener('click', hide);
 })();
 // 안드로이드 브라우저는 주소창·아래 메뉴가 나타났다 사라지며 보이는 높이가 바뀐다 → 실제 보이는 높이로 창 크기를 맞춘다
 function setVVH(){ const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight; document.documentElement.style.setProperty('--vvh', h + 'px'); }
