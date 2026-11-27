@@ -130,6 +130,10 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
 .missb{position:absolute;left:50%;top:3px;transform:translateX(-50%);background:#d9901a;color:#fff;font-size:9.5px;font-weight:800;padding:1px 4px;border-radius:4px;letter-spacing:.3px;pointer-events:none}
 #sjSum small{font-size:11px;color:var(--ink2)}
 .sjt td.c{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.windsign{position:absolute;left:50%;top:64px;transform:translateX(-50%);z-index:5;background:rgba(31,28,24,.86);color:#fff;border-radius:12px;padding:8px 14px;font-size:13px;line-height:1.45;text-align:center;width:max-content;max-width:min(330px,calc(100% - 140px));pointer-events:none;opacity:0;transition:opacity .18s}
+.windsign.on{opacity:1}
+.windsign b{font-size:15px}
+.windsign small{display:block;color:#e8dfcf;font-size:12px;margin-top:2px}
 #toast{position:fixed;left:50%;top:calc(var(--hh) + 74px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(31,28,24,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
 #toast.on{opacity:1}
 @media (max-width:480px){.steps span{padding:4px 7px;font-size:11.5px}header h1{display:none}.sl{grid-template-columns:54px 1fr 84px}header .ic{width:35px;height:38px;font-size:15px}header{gap:4px;padding:0 6px}.wxcard small{display:none}}
@@ -154,6 +158,7 @@ input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-ca
     <button class="nudge glass" id="nR" data-k="z" data-d="-1" hidden>▶<b>오른쪽<br>바람</b><small id="nRv"></small></button>
     <button class="nudge glass pn" id="pDn" hidden>⬇<b>누르는<br>바람</b><small id="pDnv"></small></button>
     <button class="nudge glass pn" id="pUp" hidden>⬆<b>올리는<br>바람</b><small id="pUpv"></small></button>
+    <div class="windsign" id="windSign" hidden></div>
     <div class="glass hitask" id="hitAsk" hidden></div>
     <!-- ② 표잡기: 반투명 슬라이더 -->
     <div class="glass panel" id="pAim" hidden>
@@ -429,9 +434,29 @@ $('guideBtn').onclick = () => { guide = !guide; try { localStorage.setItem('gukg
 // ---------- 과녁 상하좌우 바람 버튼 ----------
 // ▲ 표를 위로 = 맞바람 늘리기, ▼ 아래로 = 뒷바람, ◀ 왼쪽으로 = 왼쪽에서 부는 바람, ▶ 오른쪽으로 = 오른쪽에서 부는 바람
 const NUDGE = 0.2;
+
+// 바람 세기별 징후 (보퍼트 풍력 계급, 기상청 이름) — 바람 버튼을 누를 때 잠깐 보여 준다
+const WIND_SIGNS = [
+  [0.3, '고요', '연기가 똑바로 올라가고 풍향기가 축 처져 있음'],
+  [1.6, '실바람', '연기가 흐르는 쪽으로 바람을 알 수 있으나 풍향기는 거의 그대로'],
+  [3.4, '남실바람', '얼굴에 바람이 느껴지고 나뭇잎이 살랑거림, 풍향기가 움직이기 시작'],
+  [5.5, '산들바람', '나뭇잎과 잔가지가 쉼 없이 흔들리고 깃발이 가볍게 펄럭임'],
+  [8.0, '건들바람', '먼지와 종이가 날리고 작은 가지가 흔들림, 풍향기가 거의 수평'],
+  [10.8, '흔들바람', '잎 달린 작은 나무가 흔들리고 연못에 잔물결이 일어남'],
+  [99, '된바람', '큰 가지가 흔들리고 전선이 울림, 습사를 쉬는 게 좋음']
+];
+let signT = null;
+function showWindSign(label, v){
+  const s = WIND_SIGNS.find(x => v < x[0]), el = $('windSign');
+  el.innerHTML = `<b>${label} ${fmt(v)} m/s · ${s[1]}</b><small>${s[2]}</small>`;
+  el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
+  clearTimeout(signT); signT = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 200); }, 1800);
+}
 function nudge(k, d){
   const w = { ...S.w }; w[k] = +clamp(w[k] + d * NUDGE, -8, 8).toFixed(1); if (Math.abs(w[k]) < 0.05) w[k] = 0;
   S.w = w; saveS(); syncSliders(); renderWxCard(); draw();
+  const v = Math.abs(w[k]);
+  showWindSign(k === 'x' ? (w.x < 0 ? '맞바람' : w.x > 0 ? '순풍' : '앞뒤 바람') : (w.z > 0 ? '왼쪽바람' : w.z < 0 ? '오른쪽바람' : '옆바람'), v);
 }
 function placeNudges(){
   const show = S.step === 2 && $('vPers').hidden;
