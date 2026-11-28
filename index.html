@@ -458,7 +458,7 @@ let P = load('gukgung3-pers', DEF);
 // 기기가 저장 공간을 정리할 때 이 앱 기록은 지우지 않도록 요청 (지원하는 브라우저에서만)
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
 const blankSheet = () => Array.from({ length: 9 }, () => Array(5).fill(null));
-const TODAY0 = () => ({ step: 2, pressure: 1013, pRef: null, rho: null, tempC: 15, w: { x: 0, z: 0 }, wx: null, range: null, shots: [], hits: [], sheet: blankSheet(), date: null });
+const TODAY0 = () => ({ step: 2, pw: 0, pressure: 1013, pRef: null, rho: null, tempC: 15, w: { x: 0, z: 0 }, wx: null, range: null, shots: [], hits: [], sheet: blankSheet(), date: null });
 let S = load('gukgung3-today', TODAY0());
 const saveP = () => store('gukgung3-pers', P), saveS = () => store('gukgung3-today', S);
 var basePick = false;   // 개인 기준: 과녁에서 손으로 기준표 찍기 중
@@ -468,13 +468,15 @@ let guide = (() => { try { return localStorage.getItem('gukgung3-guide') !== '0'
 // 고기압·저기압은 주변 지역(반경 200 km 8곳 평균)과 비교해서 정한다. 주변 값이 없으면 1013 hPa와 비교
 const REF = () => S.pRef ?? 1013;
 const excess = (p, r = REF()) => { const d = Math.round((p - r) * 10) / 10; return Math.abs(d) >= 1 ? d : 0; };   // ±1 hPa 안은 평기압
-const exV = () => excess(S.pressure) * 2.5;   // 하늘·바람 그림의 세기 (주변 대비 차이는 작아서 키워 그림)
+const exV = () => (excess(S.pressure) + (S.pw || 0)) * 2.5;   // 하늘·바람 그림의 세기 (주변 대비 차이는 작아서 키워 그림)
 // 공기 밀도: 무거울수록(춥고 기압이 높을수록) 화살이 덜 가므로 표를 위로
 const rhoPct = (r = S.rho) => r ? (r / RHO0 - 1) * 100 : 0;
 const dShift = () => (P.kRho ?? 0.10) * rhoPct();
 const perOf = (ex, o = P) => ex < 0 ? (o.perHpaLo ?? o.perHpa) : o.perHpa;   // 고기압/저기압 간격을 따로
 const pShift = () => perOf(excess(S.pressure)) * excess(S.pressure);          // 고기압 → 화살이 덜 가므로 위로, 저기압 → 아래로
-const center0 = () => ({ z: P.baseZ || 0, y: P.baseY + pShift() + dShift() });      // 바람 안내선 0 = 무풍 기준 표 (사람마다 좌우로 쏠린 기준표 반영)
+// 현장에서 손으로 느끼는 누르는 바람(+칸)·올리는 바람(−칸): 기압계와 상관없이 칸마다 고기압·저기압 간격만큼 표를 올리고 내린다
+const pwShift = () => { const n = S.pw || 0; return n > 0 ? n * P.perHpa : n * (P.perHpaLo ?? P.perHpa); };
+const center0 = () => ({ z: P.baseZ || 0, y: P.baseY + pShift() + dShift() + pwShift() });      // 바람 안내선 0 = 무풍 기준 표 (사람마다 좌우로 쏠린 기준표 반영)
 const aim = () => { const c = center0(); return { z: c.z - P.kw * S.w.z, y: c.y - P.kx * S.w.x }; };   // 바람이 불어오는 쪽으로
 const pClass = p => { const e = excess(p); return e <= -5 ? '강한 저기압' : e < 0 ? '저기압' : e === 0 ? '평기압' : e < 5 ? '고기압' : '강한 고기압'; };
 const cm = m => Math.round(m * 100);
@@ -629,7 +631,8 @@ function syncSliders(){
   $('sX').value = S.w.x; $('oX').textContent = Math.abs(S.w.x) < 0.05 ? '0' : `${S.w.x < 0 ? '맞' : '순'} ${fmt(Math.abs(S.w.x))}`;
   // 표가 왜 움직였는지: 기압(주변 대비)·공기 밀도·바람 몫을 따로 보여 준다
   const ps = cm(pShift()), ds = cm(dShift()), ws = cm(-P.kx * S.w.x), sg = v => `${v > 0 ? '↑' : '↓'}${Math.abs(v)}`;
-  const why = [ps && `기압 ${sg(ps)}`, ds && `공기 ${sg(ds)}`, ws && `앞뒤바람 ${sg(ws)}`].filter(Boolean);
+  const pws = cm(pwShift());
+  const why = [ps && `기압 ${sg(ps)}`, pws && `${pws > 0 ? '누르는' : '올리는'} 바람 ${sg(pws)}`, ds && `공기 ${sg(ds)}`, ws && `앞뒤바람 ${sg(ws)}`].filter(Boolean);
   $('aimWords').innerHTML = aimWords(aim()) + (why.length ? `<span class="why"> · ${why.join(' · ')} cm</span>` : '');
 }
 function onSlide(){
@@ -831,8 +834,8 @@ function placeNudges(){
   $('nR').style.cssText = `right:8px;top:${Math.max(top, midY)}px`;
   $('pDn').style.cssText = `right:8px;top:${by}px`;
   $('pUp').style.cssText = `right:62px;top:${by}px`;
-  const ex = excess(S.pressure);
-  $('pDnv').textContent = ex > 0 ? `+${ex}` : ''; $('pUpv').textContent = ex < 0 ? `${ex}` : '';
+  const pn = S.pw || 0;
+  $('pDnv').textContent = pn > 0 ? `${pn}칸` : ''; $('pUpv').textContent = pn < 0 ? `${-pn}칸` : '';
   const v = S.w;
   $('nUv').textContent = v.x < -0.05 ? fmt(-v.x) : ''; $('nDv').textContent = v.x > 0.05 ? fmt(v.x) : '';
   $('nLv').textContent = v.z > 0.05 ? fmt(v.z) : ''; $('nRv').textContent = v.z < -0.05 ? fmt(-v.z) : '';
@@ -872,7 +875,13 @@ function showPressureSign(p){
   el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
   clearTimeout(signT); signT = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 200); }, 1800);
 }
-function pNudge(up){ S.pressure = clamp(pStep(S.pressure, up), 960, 1050); saveS(); syncSliders(); renderWxCard(); draw(); showPressureSign(S.pressure); }
+function pNudge(up){   // 기압계(S.pressure)는 그대로 두고, 손으로 느낀 누르는/올리는 바람만 한 칸씩
+  S.pw = clamp((S.pw || 0) + (up ? 1 : -1), -10, 10); saveS(); syncSliders(); renderWxCard(); draw();
+  const n = S.pw, el = $('windSign'), cmv = Math.abs(cm(pwShift()));
+  el.innerHTML = n ? `<b>${n > 0 ? '누르는 바람' : '올리는 바람'} ${Math.abs(n)}칸 · 표 ${n > 0 ? '위로' : '아래로'} ${cmv} cm</b><small>현장에서 느끼는 바람 압력으로 맞춘 값입니다</small>` : '<b>누르는·올리는 바람 없음</b><small>표가 원래 자리로 돌아왔습니다</small>';
+  el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
+  clearTimeout(signT); signT = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 200); }, 1800);
+}
 [['pDn', true], ['pUp', false]].forEach(([id, up]) => {
   const b = $(id); let t1 = null, t2 = null;
   const stop = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; };
@@ -988,6 +997,8 @@ function briefing(){
   const e = excess(S.pressure);
   if (e > 0) out.push(`${S.pRef != null ? '주변보다 기압이 높아' : '기압이 높아'} 누르는 바람으로 화살이 낮게 갈 수 있습니다.`);
   else if (e < 0) out.push(`${S.pRef != null ? '주변보다 기압이 낮아' : '기압이 낮아'} 올리는 바람으로 화살이 뜰 수 있습니다.`);
+  if ((S.pw || 0) > 0) out.push('현장에서 누르는 바람이 느껴집니다.');
+  else if ((S.pw || 0) < 0) out.push('현장에서 올리는 바람이 느껴집니다.');
   const rp = rhoPct();
   if (S.rho && rp >= 1) out.push('공기 밀도가 높아 화살이 짧아질 수 있습니다.');
   else if (S.rho && rp <= -1) out.push('공기 밀도가 낮아 화살이 길어질 수 있습니다.');
@@ -1110,7 +1121,7 @@ $('persFix').onclick = () => { DEF = { ...P }; store('gukgung3-def', DEF); toast
 $('tutAgain').onclick = () => { closePers(); setTimeout(() => window.showTut && window.showTut(), 200); };
 // 지금 날씨 정보만 지우기 (기압·바람·기온·주변 기압·공기 밀도·하늘). 습사 기록·개인 기준은 그대로
 function clearWx(){ const keep = { sheet: S.sheet, hits: S.hits, date: S.date || today(), step: S.step }; S = Object.assign(TODAY0(), keep); saveS(); syncSliders(); renderWxCard(); renderHits(); draw(); }
-$('wxClear').onclick = () => { if (!S.wx && !S.w.x && !S.w.z && S.pressure === 1013) { toast('지울 날씨 정보가 없습니다'); return; } clearWx(); toast('날씨 정보를 지웠습니다 — 기압 1013 hPa · 바람 없음'); };
+$('wxClear').onclick = () => { if (!S.wx && !S.w.x && !S.w.z && S.pressure === 1013 && !S.pw) { toast('지울 날씨 정보가 없습니다'); return; } clearWx(); toast('날씨 정보를 지웠습니다 — 기압 1013 hPa · 바람 없음'); };
 $('resetToday').onclick = () => { const keep = { sheet: S.sheet, hits: S.hits, date: S.date || today() }; S = Object.assign(TODAY0(), keep); saveS(); /* 기압·바람만 지우고 습사 기록은 그대로 */ closePers(); setStep(2); renderHits(); renderSheet(); toast('오늘 값만 지웠습니다 (개인 기준은 그대로)'); };
 
 // ---------- 날씨 (GPS → Open-Meteo) ----------
