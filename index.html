@@ -974,14 +974,29 @@ function hitProposal(){
 let hitNo = null;
 // 아래 안내 칸: 지금 바람·기압·공기 밀도를 한눈에 브리핑
 function briefing(){
-  const w = S.w, sp = Math.hypot(w.x, w.z), st = skyState();
-  const head = S.wx ? `${S.sky ? `${skyIcon(st)} ${SKY_WORD[st.t]} · ` : ''}${S.tempC}°C · ` : '';
-  const wind = sp < 0.05 ? '바람 없음' : windWords(w);
-  let ws = ['', '']; try { ws = WIND_SIGNS.find(x => Math.max(Math.abs(w.x), Math.abs(w.z)) < x[0]); } catch (x) {}
+  // 말로 풀어 준다: 어떤 바람이 얼마나 부는지 → 기압·공기 밀도가 화살에 주는 영향 → 그래서 표를 어떻게 옮겼는지
+  const w = S.w, mx = Math.max(Math.abs(w.x), Math.abs(w.z)), out = [];
+  const kinds = [];
+  if (Math.abs(w.x) >= 0.3) kinds.push(w.x < 0 ? '맞바람' : '뒷바람');
+  if (Math.abs(w.z) >= 0.3) kinds.push(w.z > 0 ? '좌측 측풍' : '우측 측풍');
+  if (!kinds.length) out.push('바람이 거의 없습니다.');
+  else {
+    const how = mx < 1.6 ? '약하게' : mx < 3.4 ? '조금' : mx < 5.5 ? '제법' : mx < 8 ? '강하게' : '매우 강하게';
+    const subj = kinds.length === 2 ? `${kinds[0]}과 ${kinds[1]}이` : `${kinds[0]}이`;
+    out.push(`${subj} ${how} 불고 있습니다.`);
+  }
   const e = excess(S.pressure);
-  const pres = e ? `${e > 0 ? '고기압' : '저기압'} (${S.pRef != null ? '주변' : '1013'}보다 ${e > 0 ? '+' : ''}${e} hPa) → 표 ${e > 0 ? '위로' : '아래로'}` : `평기압 (${S.pRef != null ? '주변과 비슷' : '1013 hPa 기준'})`;
-  const rp = rhoPct(), air = !S.rho ? '' : Math.abs(rp) < 1 ? '공기 밀도 보통' : `공기 ${rp > 0 ? '+' : ''}${rp.toFixed(1)}% ${rp > 0 ? '무거움 → 화살이 덜 감' : '가벼움 → 화살이 더 감'}`;
-  return `<b>${head}${wind}${sp >= 0.05 && ws[1] ? ` (${ws[1]})` : ''}</b><br>${[pres, air].filter(Boolean).join(' · ')}`;
+  if (e > 0) out.push(`${S.pRef != null ? '주변보다 기압이 높아' : '기압이 높아'} 누르는 바람으로 화살이 낮게 갈 수 있습니다.`);
+  else if (e < 0) out.push(`${S.pRef != null ? '주변보다 기압이 낮아' : '기압이 낮아'} 올리는 바람으로 화살이 뜰 수 있습니다.`);
+  const rp = rhoPct();
+  if (S.rho && rp >= 1) out.push('공기 밀도가 높아 화살이 짧아질 수 있습니다.');
+  else if (S.rho && rp <= -1) out.push('공기 밀도가 낮아 화살이 길어질 수 있습니다.');
+  const a = aim(), ry = a.y - P.baseY, rz = a.z - (P.baseZ || 0), dy = Math.sign(ry) * cm(Math.abs(ry)), dz = Math.sign(rz) * cm(Math.abs(rz)), Y = Math.abs(dy) >= 1, Z = Math.abs(dz) >= 1;
+  const side = `${dz > 0 ? '오른쪽으로' : '왼쪽으로'} ${Math.abs(dz)} cm`;
+  out.push(Y && Z ? `그래서 기준표를 <b>${Math.abs(dy)} cm ${dy > 0 ? '높이고' : '낮추고'}, ${side}</b> 옮겼습니다.`
+    : Y ? `그래서 기준표를 <b>${Math.abs(dy)} cm ${dy > 0 ? '높였습니다' : '낮췄습니다'}</b>.`
+    : Z ? `그래서 기준표를 <b>${side}</b> 옮겼습니다.` : '기준표 그대로 겨냥하세요.');
+  return out.join(' ');
 }
 function renderHits(){
   const H = S.hits || [], Hn = H.filter(p => !p.used), nu = H.length - Hn.length;
