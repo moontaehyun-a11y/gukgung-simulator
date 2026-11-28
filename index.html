@@ -506,12 +506,13 @@ function draw(){
   const cz = 0, cyv = (ymin + ymax) / 2, oy = topH + fh / 2;
   const X = z => w / 2 + (z - cz) * s, Y = y => oy - (y - cyv) * s;
   view = { X, Y, s, box: { w, h, top: topH, bot: botH }, inv: (px, py) => ({ z: (px - w / 2) / s + cz, y: (oy - py) / s + cyv }) };
-  // 하늘·땅: 기압에 따라 하늘색·해·구름을 바꾼다 (고기압 → 맑고 쨍쨍, 저기압 → 흐리고 구름·비)
-  drawSky(g, w, Y(0));
+  // 하늘·땅: 실제 날씨(맑음·구름·안개·비·눈·뇌우)대로 그린다
+  const ground = drawSky(g, w, Y(0));
   g.strokeStyle = 'rgba(33,28,24,.05)'; g.lineWidth = 1;
   for (let z = Math.floor(zmin - 5); z <= zmax + 5; z += 0.5) { g.beginPath(); g.moveTo(X(z), 0); g.lineTo(X(z), h); g.stroke(); }
   for (let y = -10; y <= 15; y += 0.5) { g.beginPath(); g.moveTo(0, Y(y)); g.lineTo(w, Y(y)); g.stroke(); }
-  g.fillStyle = '#a3b38a'; g.fillRect(0, Y(0), w, h - Y(0));
+  g.fillStyle = ground.c; g.fillRect(0, Y(0), w, h - Y(0));
+  if (ground.snow) { g.fillStyle = 'rgba(255,255,255,.45)'; for (let i = 0; i < 18; i++) { g.beginPath(); g.ellipse((i * 97) % w, Y(0) + 8 + (i * 37) % 80, 20, 4, 0, 0, Math.PI * 2); g.fill(); } }
   // 과녁
   const F = FACE;
   g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(X(-TW / 2) + 5, Y(TH) + 6, TW * s, TH * s);
@@ -582,7 +583,7 @@ function renderWxCard(){
   if (T3 && !$('v3d').hidden) update3d();
   const L = S.wx, src = L ? `${(L.time || '').slice(11, 16)} ${L.range ? L.range + ' · ' : ''}${DIR16n(L.dir)}풍 ${fmt(L.v)} m/s${L.gust != null ? ` (돌풍 ${fmt(L.gust)})` : ''}` : '날씨 직접 맞추기';
   const pe = excess(S.pressure), pb = pe > 0 ? ['고', 'hi'] : pe < 0 ? ['저', 'lo'] : ['평', 'mid'];
-  $('wxCard').innerHTML = `<span class="pbadge ${pb[1]}" title="${pClass(S.pressure)}">${pb[0]}</span>${gaugeSVG(S.pressure)}<div class="t"><span class="tmp">${S.wx ? `${S.tempC}°C${S.rho ? ` · 공기 ${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : ''}` : '기온 —'}</span><b>${S.pressure} hPa</b><small>${pClass(S.pressure)}${S.pRef != null ? ` · 주변 ${Math.round(S.pRef)}` : ''}</small></div>${windSVG(S.w)}<div class="t" style="flex:1"><b>${shortWind(S.w)}</b><small>${src}</small></div>`;
+  $('wxCard').innerHTML = `<span class="pbadge ${pb[1]}" title="${pClass(S.pressure)}">${pb[0]}</span>${gaugeSVG(S.pressure)}<div class="t"><span class="tmp">${S.wx ? `${S.sky ? skyIcon(skyState()) + ' ' : ''}${S.tempC}°C${S.rho ? ` · 공기 ${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : ''}` : '기온 —'}</span><b>${S.pressure} hPa</b><small>${pClass(S.pressure)}${S.pRef != null ? ` · 주변 ${Math.round(S.pRef)}` : ''}</small></div>${windSVG(S.w)}<div class="t" style="flex:1"><b>${shortWind(S.w)}</b><small>${src}</small></div>`;
 }
 
 // ---------- 단계 전환 ----------
@@ -614,41 +615,65 @@ $('guideBtn').onclick = () => { guide = !guide; try { localStorage.setItem('gukg
 
 // ---------- 날씨 그림: 하늘(기압) + 바람결·비(움직임) ----------
 const lerpC = (a, b, k) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',')})`;
+// ---------- 실제 날씨 그림 (기상 코드 WMO: 맑음·구름·안개·비·눈·뇌우) ----------
+// 날씨를 읽기 전(직접 맞출 때)은 옅은 구름 낀 보통 하늘
+function skyState(){
+  const k = S.sky; if (!k) return { t: 'none', lv: 0, cloud: 30, day: true };
+  const c = k.code, day = k.day !== 0;
+  let t = 'clear', lv = 0;
+  if (c === 0) t = 'clear'; else if (c <= 2) t = 'partly'; else if (c === 3) t = 'cloudy';
+  else if (c === 45 || c === 48) t = 'fog';
+  else if (c >= 51 && c <= 57) { t = 'rain'; lv = 0.15 + (c - 51) / 6 * 0.2; }
+  else if ((c >= 61 && c <= 67) || (c >= 80 && c <= 82)) { t = 'rain'; lv = c === 61 || c === 80 || c === 66 ? 0.4 : c === 63 || c === 81 ? 0.7 : 1; }
+  else if ((c >= 71 && c <= 77) || c === 85 || c === 86) { t = 'snow'; lv = c === 71 || c === 85 || c === 77 ? 0.4 : c === 73 ? 0.7 : 1; }
+  else if (c >= 95) { t = 'storm'; lv = 1; }
+  if ((t === 'rain' || t === 'snow') && k.rain > 0) lv = Math.max(lv, clamp(k.rain / 6, 0.2, 1));
+  const cloud = k.cloud ?? { clear: 5, partly: 40, cloudy: 90, fog: 100, rain: 95, snow: 95, storm: 100 }[t];
+  return { t, lv, cloud, day };
+}
+const SKY_WORD = { none: '', clear: '맑음', partly: '구름 조금', cloudy: '흐림', fog: '안개', rain: '비', snow: '눈', storm: '뇌우' };
+const SKY_ICON = { none: '', clear: '☀️', partly: '⛅', cloudy: '☁️', fog: '🌫️', rain: '🌧️', snow: '🌨️', storm: '⛈️' };
+const skyIcon = st => st.t === 'clear' && !st.day ? '🌙' : SKY_ICON[st.t];
 function drawSky(g, w, groundY){
-  const ex = exV(), f = clamp(ex / 20, -1, 1);
-  const top = f >= 0 ? lerpC([205, 221, 232], [120, 182, 236], f) : lerpC([205, 221, 232], [128, 136, 145], -f);
-  const bot = f >= 0 ? lerpC([236, 231, 220], [226, 239, 248], f) : lerpC([236, 231, 220], [196, 199, 201], -f);
+  const st = skyState(), T = st.t, night = !st.day, wet = T === 'rain' || T === 'storm';
+  const dim = T === 'storm' ? 0.8 : wet ? 0.6 : T === 'snow' ? 0.45 : T === 'fog' ? 0.5 : T === 'cloudy' ? 0.5 : T === 'partly' ? 0.15 : T === 'none' ? 0.1 : 0;
+  let top = lerpC([110, 176, 235], [120, 126, 134], dim), bot = lerpC([222, 238, 249], [196, 199, 202], dim);
+  if (T === 'snow') { top = lerpC([170, 182, 194], [210, 216, 222], 0.3); bot = '#e9edf1'; }
+  if (T === 'fog') { top = '#c9cdd0'; bot = '#e4e6e6'; }
+  if (night) { top = lerpC([18, 30, 62], [40, 44, 52], dim); bot = lerpC([52, 70, 110], [70, 74, 82], dim); }
   const gr = g.createLinearGradient(0, 0, 0, Math.max(40, groundY)); gr.addColorStop(0, top); gr.addColorStop(1, bot);
   g.fillStyle = gr; g.fillRect(0, 0, w, Math.max(0, groundY) + 1);
-  g.fillStyle = f < -0.3 ? '#8f9c80' : '#a3b38a'; g.fillRect(0, groundY, w, 4000);
-  // 해: 고기압일수록 크고 빛살이 강하게, 평기압은 은은하게, 저기압이면 숨음
-  if (f > -0.15) {
-    const sx = 46, sy = 44, k = Math.max(0, f), R = 16 + k * 8;
-    const halo = g.createRadialGradient(sx, sy, R * 0.6, sx, sy, R * (3 + k * 3));
-    halo.addColorStop(0, `rgba(255,214,90,${0.45 + k * 0.35})`); halo.addColorStop(1, 'rgba(255,214,90,0)');
-    g.fillStyle = halo; g.beginPath(); g.arc(sx, sy, R * (3 + k * 3), 0, Math.PI * 2); g.fill();
-    if (k > 0.05) { g.strokeStyle = `rgba(255,190,40,${0.35 + k * 0.45})`; g.lineWidth = 2.5; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.beginPath(); g.moveTo(sx + Math.cos(a) * (R + 5), sy + Math.sin(a) * (R + 5)); g.lineTo(sx + Math.cos(a) * (R + 12 + k * 14), sy + Math.sin(a) * (R + 12 + k * 14)); g.stroke(); } }
-    g.fillStyle = f > 0 ? '#ffc93a' : '#ffe08a'; g.beginPath(); g.arc(sx, sy, R, 0, Math.PI * 2); g.fill();
+  const groundC = T === 'snow' ? '#dde3e7' : wet ? '#7f9070' : night ? '#5e6b52' : '#a3b38a';
+  // 해·달: 맑음·구름 조금일 때만 (구름량이 많을수록 흐릿하게)
+  const show = (T === 'clear' || T === 'partly' || T === 'none') ? 1 - clamp((st.cloud - 20) / 70, 0, 0.85) : 0;
+  if (show > 0) {
+    const sx = 46, sy = 44;
+    if (night) {
+      g.fillStyle = `rgba(255,255,255,${0.7 * show})`; for (let i = 0; i < 26; i++) { g.beginPath(); g.arc((i * 137) % w, 8 + (i * 53) % Math.max(60, groundY * 0.6), 1 + i % 2 * 0.6, 0, Math.PI * 2); g.fill(); }
+      g.fillStyle = `rgba(250,240,200,${0.95 * show})`; g.beginPath(); g.arc(sx, sy, 15, 0, Math.PI * 2); g.fill();
+      g.fillStyle = top; g.beginPath(); g.arc(sx + 7, sy - 4, 13, 0, Math.PI * 2); g.fill();
+    } else {
+      const R = T === 'clear' ? 22 : 18;
+      const halo = g.createRadialGradient(sx, sy, R * 0.6, sx, sy, R * 4.5);
+      halo.addColorStop(0, `rgba(255,214,90,${0.7 * show})`); halo.addColorStop(1, 'rgba(255,214,90,0)');
+      g.fillStyle = halo; g.beginPath(); g.arc(sx, sy, R * 4.5, 0, Math.PI * 2); g.fill();
+      if (T === 'clear') { g.strokeStyle = `rgba(255,190,40,${0.7 * show})`; g.lineWidth = 2.5; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.beginPath(); g.moveTo(sx + Math.cos(a) * (R + 5), sy + Math.sin(a) * (R + 5)); g.lineTo(sx + Math.cos(a) * (R + 13), sy + Math.sin(a) * (R + 13)); g.stroke(); } }
+      g.fillStyle = `rgba(255,201,58,${0.4 + 0.6 * show})`; g.beginPath(); g.arc(sx, sy, R, 0, Math.PI * 2); g.fill();
+    }
   }
-  // 약한 고기압(평기압 +1~+3): 얇게 퍼진 새털·층구름, +4부터는 구름 없이 맑음
-  if (ex > 0 && ex < 4) {   // +1 ~ +3 hPa만, +4부터는 구름 없음
-    const k = clamp((4 - ex) / 3, 0, 1), sky = Math.max(80, groundY * 0.6);
-    [[0.25, 0.10, 0.75, 1], [0.70, 0.18, 0.9, 0.8], [0.45, 0.30, 0.65, 0.9], [0.85, 0.05, 0.55, 0.7]].forEach(([fx, fy, sw, a0], i) => {
-      const cx = fx * w, cy = 20 + fy * sky, rx = sw * w * 0.5, ry = 5 + i % 2 * 3;
-      g.save(); g.translate(cx, cy); g.rotate(-0.06 + i * 0.03); g.scale(1, ry / rx);
-      const gr = g.createRadialGradient(0, 0, 0, 0, 0, rx); gr.addColorStop(0, `rgba(255,255,255,${0.55 * k * a0})`); gr.addColorStop(0.6, `rgba(255,255,255,${0.25 * k * a0})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rx, 0, Math.PI * 2); g.fill(); g.restore();
-    });
-  }
-  // 구름: 평기압 2개(옅게), 저기압으로 갈수록 많고 짙게. 고기압은 구름 없음
-  const n = ex > 0 ? 0 : ex === 0 ? 2 : Math.round(3 + -f * 6), dark = Math.max(0, -f);   // 고기압이면 뭉게구름 없음
+  // 구름: 구름량(%)만큼, 비·뇌우는 짙은 먹구름, 눈은 흰 회색
+  const n = T === 'clear' ? 0 : T === 'fog' ? 0 : Math.round(clamp(st.cloud, 0, 100) / 100 * 9);
+  const dark = T === 'storm' ? 0.85 : wet ? 0.55 + st.lv * 0.2 : T === 'cloudy' ? 0.3 : T === 'snow' ? 0.15 : 0;
   const seeds = [[0.72, 0.10, 1], [0.30, 0.16, 0.8], [0.52, 0.06, 1.2], [0.12, 0.08, 0.9], [0.88, 0.2, 0.85], [0.40, 0.25, 1.1], [0.64, 0.28, 0.9], [0.05, 0.22, 1], [0.95, 0.06, 1]];
   for (let i = 0; i < n; i++) {
-    const [fx, fy, sc] = seeds[i % seeds.length], cx = fx * w, cy = 18 + fy * Math.max(80, groundY * 0.55), s = (22 + dark * 10) * sc;
-    const c = Math.round(250 - dark * 120);
-    g.fillStyle = `rgba(${c},${c},${c + 4},${0.55 + dark * 0.35})`;
-    [[0, 0, 1], [-1, 0.25, 0.75], [1, 0.25, 0.8], [-0.45, -0.35, 0.8], [0.5, -0.3, 0.7]].forEach(([dx, dy, r]) => { g.beginPath(); g.arc(cx + dx * s * 1.1, cy + dy * s, s * r, 0, Math.PI * 2); g.fill(); });
+    const [fx, fy, sc] = seeds[i % seeds.length], cx = fx * w, cy = 18 + fy * Math.max(80, groundY * 0.55), sz = (22 + dark * 10) * sc;
+    const c = T === 'storm' ? 78 : wet ? Math.round(150 - st.lv * 40) : Math.round((night ? 150 : 250) - dark * 130);   // 비·뇌우는 하늘보다 짙은 먹구름
+    g.fillStyle = `rgba(${c},${c},${c + 6},${wet ? 0.88 : 0.6 + dark * 0.3})`;
+    [[0, 0, 1], [-1, 0.25, 0.75], [1, 0.25, 0.8], [-0.45, -0.35, 0.8], [0.5, -0.3, 0.7]].forEach(([dx, dy, r]) => { g.beginPath(); g.arc(cx + dx * sz * 1.1, cy + dy * sz, sz * r, 0, Math.PI * 2); g.fill(); });
   }
+  // 안개: 땅 쪽부터 뿌연 띠
+  if (T === 'fog') { const fg = g.createLinearGradient(0, groundY * 0.2, 0, groundY + 160); fg.addColorStop(0, 'rgba(235,237,238,0)'); fg.addColorStop(0.6, 'rgba(235,237,238,.75)'); fg.addColorStop(1, 'rgba(235,237,238,.9)'); g.fillStyle = fg; g.fillRect(0, 0, w, groundY + 4000); }
+  return { c: groundC, snow: T === 'snow' };
 }
 // 움직이는 바람결·빗줄기: 과녁 그림 위 얇은 투명 판에 그린다 (누르기는 아래로 통과)
 const fx = document.createElement('canvas'); fx.id = 'fx'; $('pg1').insertBefore(fx, cv.nextSibling);
@@ -706,16 +731,30 @@ function fxLoop(now){
       }
     }
   }
-  // 비: 저기압이 깊어질수록 많고 굵게, 옆바람만큼 기울어짐
-  if (ex <= -5) {
-    const lvl = clamp((-ex - 5) / 20, 0, 1), cnt = Math.round(40 + lvl * 120), slant = clamp(w.z * 0.08, -0.6, 0.6);
-    g.strokeStyle = `rgba(70,95,125,${0.28 + lvl * 0.25})`; g.lineWidth = 1 + lvl;
+  // 실제 날씨: 비(굵기는 강수량), 눈(바람 따라 흩날림), 뇌우(가끔 번쩍)
+  const st = skyState();
+  if (st.t === 'rain' || st.t === 'storm') {
+    const lvl = st.lv, cnt = Math.round(30 + lvl * 130), slant = clamp(w.z * 0.08, -0.6, 0.6);
+    g.strokeStyle = `rgba(70,95,125,${0.3 + lvl * 0.25})`; g.lineWidth = 1 + lvl;
     for (let i = 0; i < cnt; i++) {
-      const d = RAIN[i]; d.y += (0.9 + lvl * 0.6) * d.k * dt; d.x += slant * d.k * dt * 0.9;
+      const d = RAIN[i % RAIN.length]; d.y += (0.9 + lvl * 0.6) * d.k * dt; d.x += slant * d.k * dt * 0.9;
       if (d.y > 1.02) { d.y -= 1.05; d.x = Math.random(); } if (d.x > 1.02) d.x -= 1.04; if (d.x < -0.02) d.x += 1.04;
       const x = d.x * W, y = d.y * H, L = 10 + lvl * 8;
       g.beginPath(); g.moveTo(x, y); g.lineTo(x - slant * L, y - L); g.stroke();
     }
+  }
+  if (st.t === 'snow') {
+    const cnt = Math.round(40 + st.lv * 110);
+    g.fillStyle = 'rgba(255,255,255,.9)'; g.strokeStyle = 'rgba(120,135,150,.35)'; g.lineWidth = 0.8;
+    for (let i = 0; i < cnt; i++) {
+      const d = RAIN[i % RAIN.length]; d.y += 0.12 * d.k * dt; d.x += (w.z * 0.02 + Math.sin(now / 1200 + i) * 0.01) * dt;
+      if (d.y > 1.02) { d.y -= 1.05; d.x = Math.random(); } if (d.x > 1.02) d.x -= 1.04; if (d.x < -0.02) d.x += 1.04;
+      g.beginPath(); g.arc(d.x * W, d.y * H, 1.6 + d.k * 2, 0, Math.PI * 2); g.fill(); g.stroke();
+    }
+  }
+  if (st.t === 'storm') {
+    const ph = (now / 1000) % 7;
+    if (ph < 0.35) { g.fillStyle = `rgba(255,255,240,${(0.35 - ph) * 1.2})`; g.fillRect(0, 0, W, H); }
   }
 }
 requestAnimationFrame(fxLoop);
@@ -1036,10 +1075,10 @@ const wxModelName = m => (WX_MODELS.find(x => x[0] === m) || WX_MODELS[0])[1].re
 async function fetchWx(pos, model = P.wxModel || 'best_match'){
   const ac = new AbortController(), t = setTimeout(() => ac.abort(), 12000);
   try {
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.lat.toFixed(4)}&longitude=${pos.lon.toFixed(4)}&current=pressure_msl,surface_pressure,temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms&timezone=auto&models=${model}`, { signal: ac.signal, cache: 'no-store' });
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.lat.toFixed(4)}&longitude=${pos.lon.toFixed(4)}&current=pressure_msl,surface_pressure,temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,cloud_cover,precipitation,is_day&wind_speed_unit=ms&timezone=auto&models=${model}`, { signal: ac.signal, cache: 'no-store' });
     const c = (await r.json()).current;
     if (!c || c.pressure_msl == null || c.wind_speed_10m == null) { if (model !== 'best_match') { const w2 = await fetchWx(pos, 'best_match'); w2.fallbackFrom = model; return w2; } throw 0; }
-    const wx = { time: c.time, p: c.pressure_msl, t: c.temperature_2m, v: c.wind_speed_10m, dir: c.wind_direction_10m, gust: c.wind_gusts_10m, rh: c.relative_humidity_2m, ps: c.surface_pressure };
+    const wx = { time: c.time, p: c.pressure_msl, t: c.temperature_2m, v: c.wind_speed_10m, dir: c.wind_direction_10m, gust: c.wind_gusts_10m, rh: c.relative_humidity_2m, ps: c.surface_pressure, code: c.weather_code, cloud: c.cloud_cover, rain: c.precipitation, day: c.is_day };
     wx.rho = airDensity(wx.ps ?? wx.p, wx.t, wx.rh);
     wx.model = model;
     try { wx.pRef = await ringPressure(pos, ac.signal, model); } catch (e) { try { wx.pRef = model !== 'best_match' ? await ringPressure(pos, ac.signal, 'best_match') : null; } catch (e2) { wx.pRef = null; } }
@@ -1063,13 +1102,13 @@ async function ringPressure(pos, signal, model = 'best_match'){
 }
 function applyWx(wx, rg){
   const phi = (wx.dir - rg.bearing) * Math.PI / 180;   // 풍향(불어오는 쪽) − 과녁 방향
-  S.pressure = clamp(Math.round(wx.p), 960, 1050); S.tempC = Math.round(wx.t ?? 15); S.pRef = wx.pRef ?? null; S.rho = wx.rho ?? null;
+  S.pressure = clamp(Math.round(wx.p), 960, 1050); S.tempC = Math.round(wx.t ?? 15); S.pRef = wx.pRef ?? null; S.rho = wx.rho ?? null; S.sky = wx.code != null ? { code: wx.code, cloud: wx.cloud ?? null, rain: wx.rain ?? 0, day: wx.day ?? 1 } : null;
   S.w = { x: +clamp(-wx.v * Math.cos(phi), -WMAX, WMAX).toFixed(1), z: +clamp(-wx.v * Math.sin(phi), -WMAX, WMAX).toFixed(1) };
   S.wx = { ...wx, range: rg.name }; S.range = rg.id; saveS();
   const all = ranges(), it = all.find(g => g.id === rg.id); if (it) { it.used = Date.now(); saveRanges(all); }
   ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true);
   setStep(2);
-  toast(`${rg.name}: ${S.tempC}°C · ${S.pressure} hPa (${S.pRef != null ? `주변 ${Math.round(S.pRef)} → ${pClass(S.pressure)}` : '주변 비교 못함'}) · 공기 ${S.rho ? `${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : '—'} · ${windWords(S.w)} · ${wx.model ? wxModelName(wx.model) : '자동'}${wx.fallbackFrom ? ` (${wxModelName(wx.fallbackFrom)} 값이 없어 대신 씀)` : ''} 를 넣었습니다`);
+  toast(`${rg.name}: ${S.sky ? SKY_WORD[skyState().t] + ' · ' : ''}${S.tempC}°C · ${S.pressure} hPa (${S.pRef != null ? `주변 ${Math.round(S.pRef)} → ${pClass(S.pressure)}` : '주변 비교 못함'}) · 공기 ${S.rho ? `${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : '—'} · ${windWords(S.w)} · ${wx.model ? wxModelName(wx.model) : '자동'}${wx.fallbackFrom ? ` (${wxModelName(wx.fallbackFrom)} 값이 없어 대신 씀)` : ''} 를 넣었습니다`);
   window.tutAfterWx && window.tutAfterWx();
   const askMsg = $('toast').textContent;
   window.showAsk = () => { $('askVal').textContent = `들어간 값: ${askMsg.replace(/^[^:]*:\s*/, '').replace(/\s*를 넣었습니다$/, '')}`; clearTimeout(toast.t); $('toast').classList.remove('on'); $('vAsk').hidden = false; };
@@ -1166,7 +1205,7 @@ function renderRgList(){
   el.querySelectorAll('button').forEach(b => b.onclick = () => { const a = ranges(); a.splice(+b.dataset.i, 1); saveRanges(a); renderRgList(); toast('저장된 활터를 지웠습니다. 다음 날씨 읽기 때 방향을 다시 잽니다'); });
 }
 $('dirCancel').onclick = () => { stopCmp(); $('vDir').hidden = true; manual(); };
-function manual(){ S.wx = null; S.pRef = null; S.rho = null; saveS(); ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true); setStep(2); }
+function manual(){ S.wx = null; S.pRef = null; S.rho = null; S.sky = null; saveS(); ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true); setStep(2); }
 $('startYes').onclick = readWx;
 $('startNo').onclick = () => { $('vStart').hidden = true; };
 $('wxBtn').onclick = () => { $('startMsg').textContent = ''; renderRgList(); $('vStart').hidden = false; };
@@ -1362,7 +1401,7 @@ function update3d(){
   const T = T3, w = S.w, ex = exV(), wy = clamp(-ex * 0.05, -1.5, 1.5);
   T.wind = { x: w.x, y: wy, z: w.z };
   // 하늘색: 고기압은 맑고 파랗게, 저기압은 흐리고 회색으로
-  const f = clamp(exV() / 20, -1, 1), base = new THREE.Color(0xcfdde6), c = f >= 0 ? base.lerp(new THREE.Color(0xb3d3ef), f) : base.lerp(new THREE.Color(0xaeb3b8), -f);
+  const st3 = skyState(), f = st3.t === 'clear' ? 1 : st3.t === 'partly' ? 0.6 : st3.t === 'none' ? 0.3 : st3.t === 'snow' ? 0 : st3.t === 'storm' ? -1 : (st3.t === 'rain' ? -0.7 : -0.4), base = new THREE.Color(0xcfdde6), c = f >= 0 ? base.lerp(new THREE.Color(0xb3d3ef), f) : base.lerp(new THREE.Color(0xaeb3b8), -f);
   T.scene.background.copy(c); T.scene.fog.color.copy(c);
   // 바람 색·풍향 자루
   const sp = Math.hypot(w.x, w.z), yawA = Math.atan2(-w.z, w.x), s3 = Math.hypot(w.x, wy, w.z);
