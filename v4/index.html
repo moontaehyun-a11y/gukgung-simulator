@@ -17,7 +17,7 @@
    PICTURE: 화면 전체를 채우는 과녁과 움직이는 표
    COLOUR and TYPE: 과녁의 흰 바탕·검은 띠·홍심 빨강, 한지색 바탕 / 시스템 고딕
    LAYOUT: 단계별 전체 화면, 과녁 위에 슬라이더가 떠 있는 구성 */
-:root{color-scheme:light only;--paper:#f3efe6;--ink:#211c18;--ink2:#6b6358;--line:#d8d0c2;--red:#c2362b;--blue:#1f5fbf;--ok:#2f7d4f;--hh:56px}
+:root{color-scheme:light only;--paper:#f3efe6;--ink:#211c18;--ink2:#6b6358;--line:#d8d0c2;--red:#c2362b;--blue:#1f5fbf;--ok:#2f7d4f;--hh:100px}
 *{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-x:hidden}
 /* 습사 화면을 옆에 붙여 둔 200% 너비 판이 바깥으로 새면 안드로이드 Chrome이 화면 폭을 두 배로 잡아 창들이 오른쪽으로 밀린다 → 꼭 가둔다 */
@@ -28,7 +28,7 @@ button{font:inherit;color:inherit}
 .btn.red{background:var(--red);color:#fff;border-color:var(--red)}
 .ic.redtab{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important}
 .btn:disabled{opacity:.45}
-header{height:var(--hh);display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid var(--line);background:var(--paper);padding-top:env(safe-area-inset-top)}
+header{height:var(--hh);display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:5px;padding:0 8px;border-bottom:1px solid var(--line);background:var(--paper);padding-top:env(safe-area-inset-top)}
 header h1{font-size:15px;margin:0;flex:1;white-space:nowrap}
 .steps{display:flex;gap:4px}
 .steps span{font-size:12px;font-weight:700;padding:5px 9px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--ink2);white-space:nowrap}
@@ -42,7 +42,9 @@ main{position:absolute;inset:var(--hh) 0 0 0;overflow:hidden}
 .glass{background:rgba(255,255,255,.84);border:1px solid rgba(255,255,255,.7);box-shadow:0 6px 20px rgba(0,0,0,.12);border-radius:14px}
 .top{position:absolute;left:10px;right:10px;top:10px;display:flex;gap:8px;align-items:stretch;pointer-events:none}
 .top>*{pointer-events:auto}
-.wxcard{display:flex;align-items:center;gap:7px;flex:1;min-width:0;overflow:hidden}
+.wxcard{display:flex;align-items:center;gap:7px;flex:none;min-width:0;overflow:hidden}
+.hrow{display:flex;align-items:center;gap:6px;min-width:0}.hrow .grow{flex:1}
+.htitle{color:var(--red);font-weight:900;font-size:19px;letter-spacing:-.4px;white-space:nowrap}
 .wxcard .t{display:flex;flex-direction:column;line-height:1.25;min-width:0}
 .wxcard .t b,.wxcard .t small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wxcard b{font-size:13.5px;line-height:1.25}
@@ -198,7 +200,7 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
 }
 #toast{position:fixed;left:50%;top:calc(var(--hh) + 74px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(31,28,24,.92);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
 #toast.on{opacity:1}
-@media (max-width:480px){.steps span{padding:4px 7px;font-size:11.5px}header h1{display:none}.sl{grid-template-columns:54px 1fr 84px}header .ic{width:35px;height:38px;font-size:15px}header{gap:4px;padding:0 6px}.wxcard small{display:none}}
+@media (max-width:480px){.steps span{padding:4px 7px;font-size:11.5px}header h1{display:none}.sl{grid-template-columns:54px 1fr 84px}header .ic{width:35px;height:38px;font-size:15px}header{gap:4px;padding:0 6px}.hrow{gap:4px}.wxcard small{display:none}}
 /* 처음 안내: 톱니바퀴 버튼만 밝게 남기고 나머지는 어둡게 */
 #tut{position:fixed;inset:0;z-index:80}
 #tut .catch{position:absolute;inset:0}
@@ -316,11 +318,14 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
   <div class="it">오늘 바람</div>
 </div>
 <header>
-  <div class="wxcard" id="wxCard"></div>
+  <div class="hrow">
+  <b class="htitle" id="hTitle">후찰풍세</b><span class="grow"></span>
   <button class="ic redtab" id="terBtn" aria-label="선찰지형" title="선찰지형" style="font-size:12.5px;font-weight:800;padding:0 9px;width:auto;min-width:64px;white-space:nowrap;letter-spacing:-.3px">선찰지형</button>
   <button class="ic" id="b3d" hidden aria-label="바람 3D 보기" title="바람 3D 보기" style="font-size:13px;font-weight:800">3D</button>
   <button class="ic redtab" id="pgBtn" aria-label="표잡기·일시천금 바꾸기" title="표잡기 ↔ 일시천금" style="font-size:12.5px;font-weight:800;padding:0 9px;width:auto;min-width:44px;white-space:nowrap;letter-spacing:-.3px">일시천금</button>
   <button class="ic" id="persBtn" aria-label="개인 기준" title="개인 기준">⚙</button>
+  </div>
+  <div class="wxcard" id="wxCard"></div>
 </header>
 <main>
   <div class="stage"><div class="pages" id="pages"><div class="page" id="pg1">
@@ -1779,7 +1784,7 @@ function renderSheet(){
     S.sheet[r][a] = { z: q.z, y: q.y, hit: isHit(q), t: Date.now(), manual: true };
     saveS(); renderSheet(); renderHits(); draw();
   });
-  $('pgBtn').textContent = curPage ? '표' : '일시천금';
+  $('pgBtn').textContent = curPage ? '표' : '일시천금'; $('hTitle').textContent = curPage ? '일시천금' : '후찰풍세';
 }
 
 // 습사 칸을 누르고 있으면: 그 칸의 과녁과 둘레가 크게 떠오르고, 손가락을 옮겨 맞은 자리에 놓은 뒤 떼면 기록된 뒤 다시 작아진다.
