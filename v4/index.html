@@ -2388,7 +2388,7 @@ const ROT = { building: 1 };   // 각도를 틀 수 있는 것 (장애물)
     }
     $('terInfo').innerHTML = h;
     $('terUse').checked = P.useTerrain !== false;
-    $('terSite').textContent = st.name + (D.libName && D.libName !== st.name ? ` · 📂 ${D.libName}` : '') + (D.elev ? ` · 고도 ${Math.round(D.elev.lane0)}→${Math.round(D.elev.lane1)} m` : '');
+    $('terSite').textContent = [D.libName ? `📂 ${D.libName}` : '', D.elev ? `고도 ${Math.round(D.elev.lane0)}→${Math.round(D.elev.lane1)} m` : ''].filter(Boolean).join(' · ');   // 활터 이름(기본 활터 등)은 쓰지 않는다
   }
   const hitTest = (x, y) => { const D = data(); for (let i = D.features.length - 1; i >= 0; i--) { const f = D.features[i]; if (Math.hypot(x - f.x, y - f.y) < Math.max(f.r, 16 / view.s)) return i; } return -1; };
 
