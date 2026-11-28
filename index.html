@@ -243,6 +243,14 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
 .slw .sb{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:18px;font-weight:800;line-height:1;padding:0;color:var(--ink)}
 .brief{font-size:13px;line-height:1.45}
 .brief b{font-size:13.5px}
+#mag{position:fixed;inset:0;z-index:70;background:rgba(20,18,15,.6);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px;touch-action:none;-webkit-user-select:none;user-select:none}
+#mag[hidden]{display:none!important}
+#mag .mt{color:#fff;font-weight:800;font-size:15px;text-align:center}
+#mag .mbox{position:relative;width:min(88vw,calc(62vh * 50 / 60));aspect-ratio:50/60;background:#b9c6a3;border-radius:10px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+#mag .mbox svg{position:absolute;inset:0;width:100%;height:100%}
+#mag .mdot{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.35);display:none;pointer-events:none}
+#mag .mdot.h{background:#123d8a}#mag .mdot.x{background:#a8402c}
+#mag .ml{color:#fff;font-size:14px;font-weight:700;min-height:1.3em}
 </style>
 </head>
 <body>
@@ -303,7 +311,7 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
     <div class="sj">
       <div class="sj-h"><b id="sjDate"></b><span class="grow"></span><span id="sjSum"></span></div>
       <table class="sjt" id="sjTbl"></table>
-      <div class="hint" style="margin-top:8px">과녁 화면에서 <b>맞은 자리를 길게 누르면</b> 다음 칸에 자리와 함께 들어갑니다. 칸 안의 작은 과녁에서 <b>화살이 떨어진 자리를 누르면</b> 바로 기록됩니다. 과녁 밖을 누르면 그 방향(넘음·짧음·왼쪽·오른쪽)으로 빠진 불로 표시되고, 찍힌 점을 다시 누르면 지워집니다. 자세 실수로 쏜 화살은 칸을 <b>길게 누르면 MISS</b>로 표시되어 적중률과 보정에서 빠집니다.</div>
+      <div class="hint" style="margin-top:8px">과녁 화면에서 <b>맞은 자리를 길게 누르면</b> 다음 칸에 자리와 함께 들어갑니다. 습사 칸을 <b>꾹 누르고 있으면</b> 과녁이 크게 떠오릅니다. 손가락을 옮겨 맞은 자리에 놓고 떼면 기록되고, 과녁 밖에 놓으면 그 방향(넘음·짧음·왼쪽·오른쪽)으로 빠진 불로 표시됩니다. 짧게 누르면 그 자리에 바로 찍히고, 찍힌 점을 다시 누르면 지워집니다.</div>
       <div class="row" style="margin-top:10px"><button class="btn" id="sjUndo">↶ 마지막 칸 지우기</button><span class="grow"></span><button class="btn" id="sjClr">습사 지우기</button></div>
       <div class="row" style="margin-top:10px"><button class="btn grow" id="calOpen">📅 기록 달력</button></div>
       <div class="hint" style="margin-top:6px">습사는 기록할 때마다 이 기기에 날짜별로 자동 저장됩니다.</div>
@@ -317,6 +325,11 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
   <div class="t">평소 보는 표 자리를 과녁에서 누르거나 끌어 놓으세요</div>
   <div class="v" id="bpVal"></div>
   <div class="row"><button class="btn red grow" id="bpOk">이 자리로 정하기</button><button class="btn" id="bpCancel">취소</button></div>
+</div>
+<div id="mag" hidden>
+  <div class="mt"></div>
+  <div class="mbox"></div>
+  <div class="ml"></div>
 </div>
 <div class="veil" id="vAsk" hidden>
   <div class="sheet" style="max-width:360px">
@@ -1589,22 +1602,47 @@ function renderSheet(){
   $('pgBtn').textContent = curPage ? '표' : '습사';
 }
 
-// 자세 실수: 습사 칸을 길게 누르면 MISS 표시 (적중률·개인 기준 보정에서 뺀다). 다시 길게 누르면 해제
-let lpCell = null, lpCellFired = false;
+// 습사 칸을 누르고 있으면: 그 칸의 과녁과 둘레가 크게 떠오르고, 손가락을 옮겨 맞은 자리에 놓은 뒤 떼면 기록된 뒤 다시 작아진다.
+// 그림 밖에서 떼면 취소 (예전의 '길게 눌러 MISS'는 없앴다)
+let lpCell = null, lpCellFired = false, mag = null;
+function magPlace(x, y){
+  if (!mag) return;
+  const r = mag.sv.getBoundingClientRect(), fx = (x - r.left) / r.width, fy = (y - r.top) / r.height, inside = fx >= 0 && fx <= 1 && fy >= 0 && fy <= 1;
+  mag.where = inside ? 'in' : 'out'; mag.fx = fx; mag.fy = fy;
+  const q = { z: (clamp(fx, 0, 1) - 0.5) * CV.SZ, y: CV.Y0 + (1 - clamp(fy, 0, 1)) * CV.SY };
+  mag.dot.style.display = inside ? 'block' : 'none';
+  mag.dot.style.left = (clamp(fx, 0, 1) * 100) + '%'; mag.dot.style.top = (clamp(fy, 0, 1) * 100) + '%';
+  mag.dot.className = 'mdot ' + (isHit(q) ? 'h' : 'x');
+  mag.lab.textContent = inside ? (isHit(q) ? '관중' : `불 · ${missZone(q).name}`) : '그림 밖에서 떼면 취소';
+}
+function magOpen(td, x, y){
+  const r = +td.dataset.r, a = +td.dataset.a, c = S.sheet[r][a], el = $('mag');
+  el.querySelector('.mt').textContent = `${r + 1}순 ${a + 1}시 — 손가락을 옮겨 맞은 자리에 놓고 떼세요`;
+  const box = el.querySelector('.mbox'); box.innerHTML = cellSVG(c && c.z != null ? c : null).replace('opacity="0.5"', 'opacity="1"') + '<div class="mdot"></div>';
+  mag = { r, a, sv: box.querySelector('svg'), dot: box.querySelector('.mdot'), lab: el.querySelector('.ml'), where: 'out' };
+  el.hidden = false; lpCellFired = true;
+  try { navigator.vibrate && navigator.vibrate(15); } catch (er) {}
+  magPlace(x, y);
+}
+function magClose(){
+  if (!mag) return; const { r, a, where, fx, fy } = mag; mag = null; $('mag').hidden = true;
+  setTimeout(() => { lpCellFired = false; }, 450);   // 끌고 뗀 뒤 클릭이 안 오는 기기도 있어, 다음 짧은 누르기가 막히지 않게
+  const c = S.sheet[r][a];
+  if (where === 'in') {
+    const q = { z: +((fx - 0.5) * CV.SZ).toFixed(3), y: +(CV.Y0 + (1 - fy) * CV.SY).toFixed(3) };
+    dropHit(c); S.sheet[r][a] = { z: q.z, y: q.y, hit: isHit(q), t: Date.now(), manual: true, ...(c && c.miss ? { miss: true } : {}) };
+  } else return;
+  saveS(); renderSheet(); renderHits(); draw();
+}
 $('sjTbl').addEventListener('pointerdown', e => {
   const td = e.target.closest('td.c'); if (!td) return;
-  lpCell = { td, x: e.clientX, y: e.clientY, timer: setTimeout(() => {
-    const r = +td.dataset.r, a = +td.dataset.a, c = S.sheet[r][a];
-    if (!c) S.sheet[r][a] = { hit: false, miss: true, t: Date.now(), manual: true };
-    else S.sheet[r][a] = { ...c, miss: !c.miss };
-    const nc2 = S.sheet[r][a], h = (S.hits || []).find(p => p.t === nc2.t); if (h) h.bad = !!nc2.miss;
-    lpCellFired = true; lpCell = null; saveS(); renderSheet(); renderHits(); draw();
-    try { navigator.vibrate && navigator.vibrate(30); } catch (er) {}
-    toast(nc2.miss ? `${r + 1}순 ${a + 1}시 MISS (자세 실수) — 적중률·보정에서 뺍니다` : `${r + 1}순 ${a + 1}시 MISS 해제`);
-  }, 500) };
+  lpCell = { td, x: e.clientX, y: e.clientY, timer: setTimeout(() => { const l = lpCell; lpCell = null; if (l) magOpen(l.td, l.x, l.y); }, 280) };
 });
-$('sjTbl').addEventListener('pointermove', e => { if (lpCell && Math.hypot(e.clientX - lpCell.x, e.clientY - lpCell.y) > 10) { clearTimeout(lpCell.timer); lpCell = null; } });
-['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => $('sjTbl').addEventListener(ev, () => { if (lpCell) { clearTimeout(lpCell.timer); lpCell = null; } }));
+const magMove = (x, y) => { if (mag) magPlace(x, y); else if (lpCell && Math.hypot(x - lpCell.x, y - lpCell.y) > 10) { clearTimeout(lpCell.timer); lpCell = null; } };
+document.addEventListener('pointermove', e => magMove(e.clientX, e.clientY));
+document.addEventListener('touchmove', e => { if (mag) { e.preventDefault(); const t = e.touches[0]; magPlace(t.clientX, t.clientY); } }, { passive: false });
+['pointerup', 'pointercancel'].forEach(ev => document.addEventListener(ev, e => { if (lpCell) { clearTimeout(lpCell.timer); lpCell = null; } if (mag && ev === 'pointerup') magClose(); }));
+document.addEventListener('touchend', () => { if (mag) magClose(); });
 $('sjTbl').addEventListener('contextmenu', e => e.preventDefault());
 $('sjUndo').onclick = () => {
   for (let r = S.sheet.length - 1; r >= 0; r--) for (let a = 4; a >= 0; a--) { const c = S.sheet[r][a]; if (c) { S.sheet[r][a] = null; if (c.t) { const i = (S.hits || []).findIndex(p => p.t === c.t); if (i >= 0) S.hits.splice(i, 1); } saveS(); renderSheet(); renderHits(); draw(); return; } }
@@ -1771,7 +1809,7 @@ $('pages').addEventListener('pointerup', e => {
       body: '① 지금 화면의 <b>오늘 표</b>(빨간 십자)를 겨냥해서 <b>2~3발</b> 쏴 보세요.<br>날씨를 읽었다면 기압·바람·공기 밀도가 이미 들어간 표입니다.',
       go: '다음', later: '그만', onGo: t2 });
     const t2 = () => spot({ el: faceEl(), title: '맞은 자리를 길게 누르세요',
-      body: '② 화살이 맞은 자리를 과녁에서 <b>손가락으로 길게</b> 누르면 기록됩니다.<br>과녁을 벗어난 화살은 습사 기록표에서 길게 눌러 MISS로 남깁니다.',
+      body: '② 화살이 맞은 자리를 과녁에서 <b>손가락으로 길게</b> 누르면 기록됩니다.<br>과녁을 벗어난 화살은 습사 기록표 칸을 꾹 눌러 크게 띄운 뒤 빠진 쪽에 놓으세요.',
       go: '다음', later: '그만', onGo: t3 });
     const t3 = () => spot({ els: ['nU', 'nD', 'nL', 'nR'].map($), title: '몰린 쪽을 보고 고치세요',
       body: '③ 화살이 한쪽으로 몰리면 앱이 <b>간격 보정</b>을 제안합니다. 기준표 자리는 그대로 두고 바람·기압 간격만 맞춥니다.<br>오늘 바람 탓이면 이 <b>상하좌우 바람 버튼</b>으로 바람을 고치세요.',
