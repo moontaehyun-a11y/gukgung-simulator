@@ -1784,7 +1784,7 @@ function renderSheet(){
     S.sheet[r][a] = { z: q.z, y: q.y, hit: isHit(q), t: Date.now(), manual: true };
     saveS(); renderSheet(); renderHits(); draw();
   });
-  $('pgBtn').textContent = curPage ? '표' : '일시천금'; $('hTitle').textContent = curPage ? '일시천금' : '후찰풍세';
+  $('pgBtn').textContent = curPage ? '후찰풍세' : '일시천금'; $('hTitle').textContent = curPage ? '일시천금' : '후찰풍세';
 }
 
 // 습사 칸을 누르고 있으면: 그 칸의 과녁과 둘레가 크게 떠오르고, 손가락을 옮겨 맞은 자리에 놓은 뒤 떼면 기록된 뒤 다시 작아진다.
