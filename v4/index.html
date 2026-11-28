@@ -1295,10 +1295,10 @@ function applyWx(wx, rg){
   setStep(2);
   toast(`${rg.name}: ${S.sky ? SKY_WORD[skyState().t] + ' · ' : ''}${S.tempC}°C · ${S.pressure} hPa (${S.pRef != null ? `주변 ${Math.round(S.pRef)} → ${pClass(S.pressure)}` : '주변 비교 못함'}) · 공기 ${S.rho ? `${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : '—'} · ${windWords(S.w)} · ${wx.model ? wxModelName(wx.model) : '자동'}${wx.fallbackFrom ? ` (${wxModelName(wx.fallbackFrom)} 값이 없어 대신 씀)` : ''} 를 넣었습니다`);
   window.tutAfterWx && window.tutAfterWx();
-  const askMsg = $('toast').textContent;
+  const askMsg = !$('vTer').hidden && $('terMsg') ? $('terMsg').textContent : $('toast').textContent;   // 선찰지형에서는 안내 줄에 뜬 글
   window.showAsk = () => { $('askVal').textContent = `들어간 값: ${askMsg.replace(/^[^:]*:\s*/, '').replace(/\s*를 넣었습니다$/, '')}`; clearTimeout(toast.t); $('toast').classList.remove('on'); $('vAsk').hidden = false; };
   const inTer = !$('vTer').hidden; if (inTer && window.__terRefresh) window.__terRefresh();   // 선찰지형에서 읽었으면 그 화면 바람을 바로 새로
-  const nextAsk = () => { if (!$('vTer').hidden) return; window.wxCardTut && window.wxCardTut() ? 0 : window.showAsk(); };   // 현장 바람 질문은 과녁 화면에서만
+  const nextAsk = () => { if (!$('vTer').hidden) { window.__wxAskPending = true; return; } window.wxCardTut && window.wxCardTut() ? 0 : window.showAsk(); };   // 현장 바람 질문은 과녁 화면에서: 선찰지형에서 읽었으면 후찰풍세로 넘어갈 때 띄운다
   setTimeout(() => { if (!($('tut').hidden && $('vStart').hidden && $('vDir').hidden)) return; window.askTerrain ? window.askTerrain(nextAsk) : nextAsk(); }, 1200);   // 저장한 지형이 있는 곳이면 먼저 불러올지 묻는다
 }
 let pend = null;
@@ -2467,7 +2467,8 @@ const ROT = { building: 1 };   // 각도를 틀 수 있는 것 (장애물)
     const done = load => { $('vTerAsk').hidden = true; if (load) applyLib(best); setTimeout(next, load ? 900 : 200); };
     $('taYes').onclick = () => done(true); $('taNo').onclick = () => done(false);
   };
-  const close = () => { run = false; $('vTer').hidden = true; setTimeout(() => window.tutAfterTer && window.tutAfterTer(), 0); /* 후찰풍세: 어디서 열었든 과녁 화면으로 */ try { if (typeof close3d === 'function') close3d(); ['vCal'].forEach(id => { const v = $(id); if (v) v.hidden = true; }); if (typeof curPage !== 'undefined' && curPage) goPage(0); } catch (e) {} syncSliders(); renderWxCard(); renderHits(); draw(); if (typeof update3d === 'function' && !$('v3d').hidden) update3d(); };
+  const close = () => { run = false; $('vTer').hidden = true; setTimeout(() => window.tutAfterTer && window.tutAfterTer(), 0);
+    if (window.__wxAskPending) { window.__wxAskPending = false; setTimeout(() => { if ($('tut').hidden && $('vTer').hidden) { window.wxCardTut && window.wxCardTut() ? 0 : window.showAsk && window.showAsk(); }  }, 400); }   /* 선찰지형에서 날씨를 읽었으면 과녁 화면에 오자마자 현장 바람 질문 */ /* 후찰풍세: 어디서 열었든 과녁 화면으로 */ try { if (typeof close3d === 'function') close3d(); ['vCal'].forEach(id => { const v = $(id); if (v) v.hidden = true; }); if (typeof curPage !== 'undefined' && curPage) goPage(0); } catch (e) {} syncSliders(); renderWxCard(); renderHits(); draw(); if (typeof update3d === 'function' && !$('v3d').hidden) update3d(); };
   $('terClose').onclick = close;
   $('terTools').innerHTML = Object.entries(TYPES).map(([k, t]) => `<button class="tt" data-k="${k}">${t.ic}<span>${t.name}</span></button>`).join('');
   const cv = $('terCv');
