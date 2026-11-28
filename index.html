@@ -123,7 +123,14 @@ input[type=range]{width:100%;height:28px;accent-color:var(--ink);background:tran
 .hitask .row .btn{min-height:40px;padding:8px 14px}
 /* 길게 누를 때 복사·붙여넣기 메뉴나 글자 선택이 뜨지 않게 */
 html,body,main,.stage,#cv,header,.panel,.nudge{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-input,textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+/* 터치 오류 막기: 두 번 톡·두 손가락으로 화면이 확대되지 않게, 길게 눌러도 글자 선택·복사 메뉴가 뜨지 않게 */
+*{touch-action:pan-x pan-y}
+button,.btn,.ic,.nudge,input[type=range],label{touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+input[type=range]{touch-action:pan-y}
+.stage,.pages,#pg1{touch-action:pan-y}
+.nudge{touch-action:none}   /* 길게 누르기(연속 이동) 도중 화면이 끌려가 끊기지 않게 */
+.veil,.sheet,#tut{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 .pages{position:absolute;inset:0;display:flex;width:200%;transition:transform .28s ease}
 .page{position:relative;width:50%;height:100%;flex:none;overflow:hidden}
 #pg2{overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
@@ -757,10 +764,15 @@ function placeNudges(){
   $('nUv').textContent = v.x < -0.05 ? fmt(-v.x) : ''; $('nDv').textContent = v.x > 0.05 ? fmt(v.x) : '';
   $('nLv').textContent = v.z > 0.05 ? fmt(v.z) : ''; $('nRv').textContent = v.z < -0.05 ? fmt(-v.z) : '';
 }
+// 길게 누르는 버튼이 손을 뗀 뒤에도 계속 움직이지 않게: 어디서 손을 떼든, 앱이 가려지든 모두 멈춘다
+const HOLDSTOP = [];
+['pointerup', 'pointercancel', 'blur'].forEach(ev => addEventListener(ev, () => HOLDSTOP.forEach(f => f())));
+document.addEventListener('visibilitychange', () => HOLDSTOP.forEach(f => f()));
 ['nU', 'nD', 'nL', 'nR'].forEach(id => {
   const b = $(id); let t1 = null, t2 = null;
   const stop = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; };
-  b.addEventListener('pointerdown', e => { e.preventDefault(); stop(); nudge(b.dataset.k, +b.dataset.d); t1 = setTimeout(() => { t2 = setInterval(() => nudge(b.dataset.k, +b.dataset.d), 110); }, 420); });
+  b.addEventListener('pointerdown', e => { e.preventDefault(); stop(); try { b.setPointerCapture(e.pointerId); } catch (x) {} nudge(b.dataset.k, +b.dataset.d); t1 = setTimeout(() => { const t0 = Date.now(); t2 = setInterval(() => { if (Date.now() - t0 > 4000) return stop(); nudge(b.dataset.k, +b.dataset.d); }, 110); }, 420); });
+  HOLDSTOP.push(stop);
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
 });
 
@@ -791,7 +803,8 @@ function pNudge(up){ S.pressure = clamp(pStep(S.pressure, up), 960, 1050); saveS
 [['pDn', true], ['pUp', false]].forEach(([id, up]) => {
   const b = $(id); let t1 = null, t2 = null;
   const stop = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; };
-  b.addEventListener('pointerdown', e => { e.preventDefault(); stop(); pNudge(up); t1 = setTimeout(() => { t2 = setInterval(() => pNudge(up), 140); }, 420); });
+  b.addEventListener('pointerdown', e => { e.preventDefault(); stop(); try { b.setPointerCapture(e.pointerId); } catch (x) {} pNudge(up); t1 = setTimeout(() => { const t0 = Date.now(); t2 = setInterval(() => { if (Date.now() - t0 > 4000) return stop(); pNudge(up); }, 140); }, 420); });
+  HOLDSTOP.push(stop);
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
 });
 
@@ -1645,6 +1658,11 @@ $('askYes').onclick = () => {
   else window.spotWind('평기압: 지형 바람일 수 있음',
     '예보는 넓은 지역 평균이라 산·골짜기·건물에 따라 활터 바람이 달라집니다.<br>상하좌우 바람 버튼으로 현장 바람에 맞추세요.');
 };
+// 터치 오류 막기 (아이폰 사파리는 확대 금지 설정을 무시하므로 직접 막는다)
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', e => { if (e.touches.length > 1 && !e.target.closest('#w3d')) e.preventDefault(); }, { passive: false });
+document.addEventListener('dblclick', e => { if (!e.target.closest('#w3d')) e.preventDefault(); }, { passive: false });
+document.addEventListener('contextmenu', e => { if (!e.target.closest('input[type=text],input:not([type]),textarea,.field')) e.preventDefault(); });
 // 안드로이드 브라우저는 주소창·아래 메뉴가 나타났다 사라지며 보이는 높이가 바뀐다 → 실제 보이는 높이로 창 크기를 맞춘다
 function setVVH(){ const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight; document.documentElement.style.setProperty('--vvh', h + 'px'); }
 setVVH(); window.addEventListener('resize', setVVH); if (window.visualViewport) window.visualViewport.addEventListener('resize', setVVH);
