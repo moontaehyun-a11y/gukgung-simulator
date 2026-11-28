@@ -1,6 +1,6 @@
 // 국궁 표잡기 v3 오프라인 작동용 서비스 워커
 // 새 버전을 올릴 때 VERSION 숫자를 바꾸면 쓰는 사람들 기기에서도 새 파일로 바뀝니다.
-const VERSION = 'gukgung3-v79';
+const VERSION = 'gukgung3-v80';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const CDN = [
   'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
@@ -16,7 +16,7 @@ self.addEventListener('install', e => {
 });
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k !== VERSION) await caches.delete(k);
+    for (const k of await caches.keys()) if (k !== VERSION && k.split('-')[0] === VERSION.split('-')[0]) await caches.delete(k);   // 같은 주소의 다른 버전 앱 저장본은 건드리지 않는다
     await self.clients.claim();
   })());
 });
@@ -24,6 +24,7 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   if (new URL(req.url).hostname.endsWith('open-meteo.com')) return;   // 날씨는 늘 새로 받는다
+  if (new URL(req.url).pathname.includes('/v4/')) return;   // 버전4(오늘의바람)는 자기 서비스 워커가 맡는다
   if (req.mode === 'navigate') {   // 페이지: 인터넷이 되면 최신, 안 되면 저장본
     e.respondWith((async () => {
       try { const r = await fetch(req); const c = await caches.open(VERSION); c.put('./index.html', r.clone()); return r; }
