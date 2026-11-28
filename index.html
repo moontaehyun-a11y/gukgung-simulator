@@ -315,9 +315,9 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
   <div class="page" id="pg2">
     <div class="sj">
       <div class="sj-h"><b id="sjDate"></b><span class="grow"></span><span id="sjSum"></span></div>
-      <div class="sjtip">👆 <b>과녁 그림을 길게 누르세요</b> — 크게 떠오르면 맞은 자리로 옮겨 놓고 손을 떼세요</div>
+      <div class="sjtip">👆 <b>과녁 그림을 길게 누르세요</b> — 크게 떠오르면 맞은 자리로 옮겨 놓고 손을 떼세요<br>↩️ 표시된 칸을 <b>한 번 더 누르면 되돌립니다</b> (지워짐)</div>
       <table class="sjt" id="sjTbl"></table>
-      <div class="hint" style="margin-top:8px">과녁 화면에서 <b>맞은 자리를 길게 누르면</b> 다음 칸에 자리와 함께 들어갑니다. 습사 칸을 <b>꾹 누르고 있으면</b> 과녁이 크게 떠오릅니다. 손가락을 옮겨 맞은 자리에 놓고 떼면 기록되고, 과녁 밖에 놓으면 그 방향(넘음·짧음·왼쪽·오른쪽)으로 빠진 불로 표시됩니다. 짧게 누르면 그 자리에 바로 찍히고, 찍힌 점을 다시 누르면 지워집니다.</div>
+      <div class="hint" style="margin-top:8px">과녁 화면에서 <b>맞은 자리를 길게 누르면</b> 다음 칸에 자리와 함께 들어갑니다. 습사 칸을 <b>꾹 누르고 있으면</b> 과녁이 크게 떠오릅니다. 손가락을 옮겨 맞은 자리에 놓고 떼면 기록되고, 과녁 밖에 놓으면 그 방향(넘음·짧음·왼쪽·오른쪽)으로 빠진 불로 표시됩니다. 빈 칸을 짧게 누르면 그 자리에 바로 찍히고, 표시된 칸을 한 번 더 누르면 되돌립니다.</div>
       <div class="row" style="margin-top:10px"><button class="btn" id="sjUndo">↶ 마지막 칸 지우기</button><span class="grow"></span><button class="btn" id="sjClr">습사 지우기</button></div>
       <div class="row" style="margin-top:10px"><button class="btn grow" id="calOpen">📅 기록 달력</button></div>
       <div class="hint" style="margin-top:6px">습사는 기록할 때마다 이 기기에 날짜별로 자동 저장됩니다.</div>
@@ -1597,11 +1597,7 @@ function renderSheet(){
     const r = +td.dataset.r, a = +td.dataset.a, c = S.sheet[r][a], sv = td.querySelector('svg');
     const rect = (sv || td).getBoundingClientRect(), fx = (e.clientX - rect.left) / rect.width, fy = (e.clientY - rect.top) / rect.height;
     const q = { z: +((fx - 0.5) * CV.SZ).toFixed(3), y: +(CV.Y0 + (1 - fy) * CV.SY).toFixed(3) };
-    if (c && c.z != null) {
-      const px = cX(c.z) / CV.W * rect.width + rect.left, py = cY(c.y) / CV.H * rect.height + rect.top;
-      if (Math.hypot(e.clientX - px, e.clientY - py) < 12) { S.sheet[r][a] = null; dropHit(c); saveS(); renderSheet(); renderHits(); draw(); return; }
-    }
-    if (c && c.z == null && !c.hit) { S.sheet[r][a] = null; saveS(); renderSheet(); return; }   // 위치 없이 ×로 둔 칸은 누르면 지움
+    if (c) { S.sheet[r][a] = null; dropHit(c); saveS(); renderSheet(); renderHits(); draw(); toast(`${r + 1}순 ${a + 1}시 기록을 되돌렸습니다`); return; }   // 표시된 칸은 한 번 더 누르면 되돌림
     dropHit(c);
     S.sheet[r][a] = { z: q.z, y: q.y, hit: isHit(q), t: Date.now(), manual: true };
     saveS(); renderSheet(); renderHits(); draw();
