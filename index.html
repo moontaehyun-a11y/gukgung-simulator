@@ -288,7 +288,7 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
       <input id="sZ" type="hidden" value="0"><input id="sX" type="hidden" value="0"><output id="oZ" hidden></output><output id="oX" hidden></output>
       <div class="row hitrow" id="hitRow"></div>
       <div class="row"><span class="grow hint" id="aimWords"></span></div>
-      <div class="row btnrow"><button class="btn tog" id="wxBtn" title="주변 날씨 읽기">📍 날씨</button><button class="btn tog" id="pickBtn" title="표를 손가락으로 직접 놓기">☝ 직접</button><button class="btn tog" id="guideBtn">〰 안내선</button><button class="btn tog" id="wind0">바람 0</button><button class="btn tog" id="wxClear" title="지금 날씨 정보(기압·바람·기온·하늘) 지우기">날씨 지우기</button></div>
+      <div class="row btnrow"><button class="btn tog" id="wxBtn" title="주변 날씨 읽기">📍 날씨</button><button class="btn tog" id="pickBtn" title="표를 손가락으로 직접 놓기">☝ 직접</button><button class="btn tog" id="guideBtn">〰 안내선</button><button class="btn tog" id="testBtn" title="테스트로 쏴서 표 점검하기">🎯 표 테스트</button><button class="btn tog" id="wxClear" title="지금 날씨 정보(기압·바람·기온·하늘) 지우기">날씨 지우기</button></div>
     </div>
 
     <!-- ③ 설정한 표로 쏘고 확인 -->
@@ -633,7 +633,6 @@ function onSlide(){
   S.pressure = +$('sP').value;
   saveS(); syncSliders(); renderWxCard(); draw();
 }
-$('wind0').onclick = () => { S.w = { x: 0, z: 0 }; saveS(); syncSliders(); renderWxCard(); draw(); };
 $('guideBtn').onclick = () => { guide = !guide; try { localStorage.setItem('gukgung3-guide', guide ? '1' : '0'); } catch (e) {} $('guideBtn').style.opacity = guide ? 1 : 0.4; draw(); };
 
 
@@ -1714,6 +1713,24 @@ $('pages').addEventListener('pointerup', e => {
       go: '알겠어요', later: '', onGo: () => window.showAsk && window.showAsk() });
     return true;
   };
+  // 🎯 표 테스트: 테스트로 쏴서 표가 맞는지 점검하는 방법을 차례로 짚어 준다
+  const anchor = (x, y, w, h) => { let d = $('tAnchor'); if (!d) { d = document.createElement('div'); d.id = 'tAnchor'; d.style.cssText = 'position:fixed;pointer-events:none'; document.body.appendChild(d); } Object.assign(d.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' }); return d; };
+  window.startTest = () => {
+    if (!view) return;
+    const r = cv.getBoundingClientRect(), a = aim();
+    const aimEl = () => anchor(r.left + view.X(a.z) - 30, r.top + view.Y(a.y) - 30, 60, 60);
+    const faceEl = () => anchor(r.left + view.X(-TW / 2), r.top + view.Y(TH), TW * view.s, TH * view.s);
+    const t1 = () => spot({ el: aimEl(), title: '테스트로 화살을 쏴서 표가 맞는지 점검하세요',
+      body: '① 지금 화면의 <b>오늘 표</b>(빨간 십자)를 겨냥해서 <b>2~3발</b> 쏴 보세요.<br>날씨를 읽었다면 기압·바람·공기 밀도가 이미 들어간 표입니다.',
+      go: '다음', later: '그만', onGo: t2 });
+    const t2 = () => spot({ el: faceEl(), title: '맞은 자리를 길게 누르세요',
+      body: '② 화살이 맞은 자리를 과녁에서 <b>손가락으로 길게</b> 누르면 기록됩니다.<br>과녁을 벗어난 화살은 습사 기록표에서 길게 눌러 MISS로 남깁니다.',
+      go: '다음', later: '그만', onGo: t3 });
+    const t3 = () => spot({ els: ['nU', 'nD', 'nL', 'nR'].map($), title: '몰린 쪽을 보고 고치세요',
+      body: '③ 화살이 한쪽으로 몰리면 앱이 <b>개인 기준 보정</b>을 제안합니다. 늘 그렇다면 「예」를 누르세요.<br>오늘 바람 탓이면 이 <b>상하좌우 바람 버튼</b>으로 바람을 고치세요.',
+      go: '시작하기', later: '' , onGo: () => toast('오늘 표를 겨냥해 2~3발 쏘고, 맞은 자리를 길게 누르세요') });
+    t1();
+  };
   window.spotWind = (title, body) => spot({ els: ['nU', 'nD', 'nL', 'nR'].map($), title, body, go: '알겠어요', later: '' });
   $('persBtn').addEventListener('click', () => { if (!T.hidden && cur && cur.el === $('persBtn')) hide(); });
   $('persBtn').addEventListener('click', () => { if (!$('vPers').hidden && !seen) { seen = true; try { localStorage.setItem('gukgung3-tut', '1'); } catch (e) {} } });
@@ -1796,6 +1813,7 @@ document.querySelectorAll('#vPers input[type=range]').forEach(r => {
   });
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => r.addEventListener(t, () => { st = null; }));
 });
+$('testBtn').onclick = () => window.startTest && window.startTest();
 // 안드로이드 브라우저는 주소창·아래 메뉴가 나타났다 사라지며 보이는 높이가 바뀐다 → 실제 보이는 높이로 창 크기를 맞춘다
 function setVVH(){ const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight; document.documentElement.style.setProperty('--vvh', h + 'px'); }
 setVVH(); window.addEventListener('resize', setVVH); if (window.visualViewport) window.visualViewport.addEventListener('resize', setVVH);
