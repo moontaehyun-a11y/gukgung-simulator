@@ -251,6 +251,11 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
 #mag .mdot{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.35);display:none;pointer-events:none}
 #mag .mdot.h{background:#123d8a}#mag .mdot.x{background:#a8402c}
 #mag .ml{color:#fff;font-size:14px;font-weight:700;min-height:1.3em}
+.sjtip{margin:2px 0 8px;padding:8px 10px;border-radius:10px;background:#fff4dc;border:1px solid #f0d49a;font-size:13px;line-height:1.4}
+#mag .mzs{display:flex;gap:10px;width:min(88vw,calc(62vh * 50 / 60))}
+#mag .mz{flex:1;text-align:center;padding:10px 6px;border-radius:12px;border:2px dashed rgba(255,255,255,.75);color:#fff;font-size:12.5px;line-height:1.35}
+#mag .mz b{font-size:15px}
+#mag .mz.h.on{background:#123d8a;border-color:#123d8a}#mag .mz.x.on{background:#a8402c;border-color:#a8402c}
 </style>
 </head>
 <body>
@@ -310,6 +315,7 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
   <div class="page" id="pg2">
     <div class="sj">
       <div class="sj-h"><b id="sjDate"></b><span class="grow"></span><span id="sjSum"></span></div>
+      <div class="sjtip">👆 <b>과녁 그림을 길게 누르세요</b> — 크게 떠오르면 맞은 자리로 옮겨 놓고 손을 떼세요</div>
       <table class="sjt" id="sjTbl"></table>
       <div class="hint" style="margin-top:8px">과녁 화면에서 <b>맞은 자리를 길게 누르면</b> 다음 칸에 자리와 함께 들어갑니다. 습사 칸을 <b>꾹 누르고 있으면</b> 과녁이 크게 떠오릅니다. 손가락을 옮겨 맞은 자리에 놓고 떼면 기록되고, 과녁 밖에 놓으면 그 방향(넘음·짧음·왼쪽·오른쪽)으로 빠진 불로 표시됩니다. 짧게 누르면 그 자리에 바로 찍히고, 찍힌 점을 다시 누르면 지워집니다.</div>
       <div class="row" style="margin-top:10px"><button class="btn" id="sjUndo">↶ 마지막 칸 지우기</button><span class="grow"></span><button class="btn" id="sjClr">습사 지우기</button></div>
@@ -330,6 +336,7 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
   <div class="mt"></div>
   <div class="mbox"></div>
   <div class="ml"></div>
+  <div class="mzs"><div class="mz h">위치 모름<br><b>관중</b></div><div class="mz x">위치 모름<br><b>맞지 않음</b></div></div>
 </div>
 <div class="veil" id="vAsk" hidden>
   <div class="sheet" style="max-width:360px">
@@ -1608,19 +1615,22 @@ let lpCell = null, lpCellFired = false, mag = null;
 function magPlace(x, y){
   if (!mag) return;
   const r = mag.sv.getBoundingClientRect(), fx = (x - r.left) / r.width, fy = (y - r.top) / r.height, inside = fx >= 0 && fx <= 1 && fy >= 0 && fy <= 1;
-  mag.where = inside ? 'in' : 'out'; mag.fx = fx; mag.fy = fy;
+  const over = el => { const b = el.getBoundingClientRect(); return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom; };
+  const zh = over(mag.zh), zx = over(mag.zx);
+  mag.where = inside ? 'in' : zh ? 'zh' : zx ? 'zx' : 'out'; mag.fx = fx; mag.fy = fy;
+  mag.zh.classList.toggle('on', zh); mag.zx.classList.toggle('on', zx);
   const q = { z: (clamp(fx, 0, 1) - 0.5) * CV.SZ, y: CV.Y0 + (1 - clamp(fy, 0, 1)) * CV.SY };
   mag.dot.style.display = inside ? 'block' : 'none';
   mag.dot.style.left = (clamp(fx, 0, 1) * 100) + '%'; mag.dot.style.top = (clamp(fy, 0, 1) * 100) + '%';
   mag.dot.className = 'mdot ' + (isHit(q) ? 'h' : 'x');
-  mag.lab.textContent = inside ? (isHit(q) ? '관중' : `불 · ${missZone(q).name}`) : '그림 밖에서 떼면 취소';
+  mag.lab.textContent = inside ? (isHit(q) ? '관중' : `불 · ${missZone(q).name}`) : zh ? '관중 (위치 모름)' : zx ? '맞지 않음 (위치 모름)' : '그림 밖에서 떼면 취소';
 }
 function magOpen(td, x, y){
   const r = +td.dataset.r, a = +td.dataset.a, c = S.sheet[r][a], el = $('mag');
   el.querySelector('.mt').textContent = `${r + 1}순 ${a + 1}시 — 손가락을 옮겨 맞은 자리에 놓고 떼세요`;
   const box = el.querySelector('.mbox'); box.innerHTML = cellSVG(c && c.z != null ? c : null).replace('opacity="0.5"', 'opacity="1"') + '<div class="mdot"></div>';
-  mag = { r, a, sv: box.querySelector('svg'), dot: box.querySelector('.mdot'), lab: el.querySelector('.ml'), where: 'out' };
-  el.hidden = false; lpCellFired = true;
+  mag = { r, a, sv: box.querySelector('svg'), dot: box.querySelector('.mdot'), lab: el.querySelector('.ml'), zh: el.querySelector('.mz.h'), zx: el.querySelector('.mz.x'), where: 'out' };
+  el.querySelectorAll('.mz').forEach(z => z.classList.remove('on')); el.hidden = false; lpCellFired = true;
   try { navigator.vibrate && navigator.vibrate(15); } catch (er) {}
   magPlace(x, y);
 }
@@ -1631,6 +1641,8 @@ function magClose(){
   if (where === 'in') {
     const q = { z: +((fx - 0.5) * CV.SZ).toFixed(3), y: +(CV.Y0 + (1 - fy) * CV.SY).toFixed(3) };
     dropHit(c); S.sheet[r][a] = { z: q.z, y: q.y, hit: isHit(q), t: Date.now(), manual: true, ...(c && c.miss ? { miss: true } : {}) };
+  } else if (where === 'zh' || where === 'zx') {   // 위치 모름: ○ / × 로만
+    dropHit(c); S.sheet[r][a] = { hit: where === 'zh', t: Date.now(), manual: true, ...(c && c.miss ? { miss: true } : {}) };
   } else return;
   saveS(); renderSheet(); renderHits(); draw();
 }
