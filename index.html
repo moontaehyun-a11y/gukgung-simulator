@@ -1831,6 +1831,7 @@ $('pages').addEventListener('pointerup', e => {
       go: '시작하기', later: '' , onGo: () => toast('오늘 표를 겨냥해 2~3발 쏘고, 맞은 자리를 길게 누르세요') });
     t1();
   };
+  window.spotEl = o => spot(o);
   window.spotWind = (title, body) => spot({ els: ['nU', 'nD', 'nL', 'nR'].map($), title, body, go: '알겠어요', later: '' });
   $('persBtn').addEventListener('click', () => { if (!T.hidden && cur && cur.el === $('persBtn')) hide(); });
   $('persBtn').addEventListener('click', () => { if (!$('vPers').hidden && !seen) { seen = true; try { localStorage.setItem('gukgung3-tut', '1'); } catch (e) {} } });
@@ -1855,6 +1856,14 @@ $('pages').addEventListener('pointerup', e => {
     if (seen && !window.persTutNext) return; window.persTutNext = false;
     seen = true; try { localStorage.setItem('gukgung3-perstut', '1'); } catch (e) {}
     armed = true; mY = mZ = false; fixBox.hidden = true; fixBtn.classList.remove('tutring');
+    // 처음 열었을 때: 첫째 빨간 네모(평소 보는 표 위치)를 화살표로 짚어 준다
+    setTimeout(() => {
+      const box1 = document.querySelector('#vPers .pbox'); if (!box1 || $('vPers').hidden || !window.spotEl) return;
+      box1.scrollIntoView({ block: 'nearest' });
+      window.spotEl({ el: box1, title: '먼저 평소 표를 보는 위치를 설정해주세요',
+        body: '바람이 없을 때 늘 겨냥하는 자리입니다.<br><b>☝ 과녁에서 손으로 찍어 정하기</b>로 과녁에서 바로 찍거나, 아래 <b>상하·좌우 기준</b> 슬라이더로 맞추세요.',
+        go: '☝ 과녁에서 찍기', onGo: () => $('bpBtn').click(), later: '슬라이더로' });
+    }, 380);
   });
 })();
 $('askNo').onclick = () => { $('vAsk').hidden = true; toast('날씨 값 그대로 갑니다'); };
