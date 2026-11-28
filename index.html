@@ -1555,7 +1555,7 @@ function missZone(c){
   const zx = c.z < -TW / 2 ? -1 : c.z > TW / 2 ? 1 : 0, zy = c.y > TH ? 1 : c.y < 0 ? -1 : 0;
   return { zx, zy, name: (zy > 0 ? '넘음' : zy < 0 ? '짧음' : '') + (zx ? (zy ? '·' : '') + (zx < 0 ? '왼쪽' : '오른쪽') : '') };
 }
-function cellSVG(c){
+function cellSVG(c, ox){   // ox: 기록된 칸은 과녁을 연하게 하고 그 위에 크게 ○ / ×
   const { W, H, SZ, SY } = CV, F = FACE, X = cX, Y = cY;
   let zone = '', dot = '';
   if (c) {
@@ -1565,12 +1565,13 @@ function cellSVG(c){
       const { zx, zy, name } = missZone(c);
       const x0 = zx < 0 ? 0 : zx > 0 ? X(TW / 2) : X(-TW / 2), x1 = zx < 0 ? X(-TW / 2) : zx > 0 ? W : X(TW / 2);
       const y0 = zy > 0 ? 0 : zy < 0 ? Y(0) : Y(TH), y1 = zy > 0 ? Y(TH) : zy < 0 ? H : Y(0);
-      zone = `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="rgba(194,54,43,.22)"/>`;
+      zone = `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="rgba(194,54,43,${ox ? 0.12 : 0.22})"/>`;
     }
-    if (c.z != null) dot = `<circle cx="${X(dz)}" cy="${Y(dy)}" r="3.6" fill="${c.hit ? '#123d8a' : '#a8402c'}" stroke="#fff" stroke-width="1"/>`;
+    if (c.z != null) dot = `<circle cx="${X(dz)}" cy="${Y(dy)}" r="${ox ? 2.6 : 3.6}" fill="${c.hit ? '#123d8a' : '#a8402c'}" stroke="#fff" stroke-width="1" opacity="${ox ? 0.7 : 1}"/>`;
   }
-  const op = c ? 1 : 0.5;   // 빈칸은 과녁을 흐리게
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${zone}<g opacity="${op}"><rect x="${X(-TW / 2)}" y="${Y(TH)}" width="${TW / SZ * W}" height="${TH / SY * H}" fill="#f7f5ef" stroke="#bdb3a2" stroke-width=".6"/><rect x="${X(-F.bandHalf)}" y="${Y(F.bandTop)}" width="${2 * F.bandHalf / SZ * W}" height="${(F.bandTop - F.bandBot) / SY * H}" fill="#211c18"/><rect x="${X(-F.boxHalf)}" y="${Y(F.boxTop)}" width="${2 * F.boxHalf / SZ * W}" height="${(F.boxTop - F.boxBot) / SY * H}" fill="#211c18"/><circle cx="${X(0)}" cy="${Y(CY)}" r="${F.r / SZ * W}" fill="#c8362b"/></g>${dot}</svg>`;
+  const op = ox && c ? 0.28 : c ? 1 : 0.5;   // 빈칸은 흐리게, 기록된 칸(ox)은 더 연하게
+  const mark = ox && c ? (c.hit ? `<circle cx="${W / 2}" cy="${H / 2}" r="15" fill="none" stroke="#c8281f" stroke-width="4.5"/>` : `<path d="M${W / 2 - 13} ${H / 2 - 13}L${W / 2 + 13} ${H / 2 + 13}M${W / 2 + 13} ${H / 2 - 13}L${W / 2 - 13} ${H / 2 + 13}" stroke="#5f5a52" stroke-width="4.5" stroke-linecap="round"/>`) : '';
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${zone}<g opacity="${op}"><rect x="${X(-TW / 2)}" y="${Y(TH)}" width="${TW / SZ * W}" height="${TH / SY * H}" fill="#f7f5ef" stroke="#bdb3a2" stroke-width=".6"/><rect x="${X(-F.bandHalf)}" y="${Y(F.bandTop)}" width="${2 * F.bandHalf / SZ * W}" height="${(F.bandTop - F.bandBot) / SY * H}" fill="#211c18"/><rect x="${X(-F.boxHalf)}" y="${Y(F.boxTop)}" width="${2 * F.boxHalf / SZ * W}" height="${(F.boxTop - F.boxBot) / SY * H}" fill="#211c18"/><circle cx="${X(0)}" cy="${Y(CY)}" r="${F.r / SZ * W}" fill="#c8362b"/></g>${dot}${mark}</svg>`;
 }
 function dropHit(c){ if (c && c.t && !c.manual) { const i = (S.hits || []).findIndex(p => p.t === c.t); if (i >= 0) S.hits.splice(i, 1); } }
 function renderSheet(){
@@ -1583,7 +1584,7 @@ function renderSheet(){
     const cells = row.map((c, a) => {
       if (!c) return `<td class="c e" data-r="${r}" data-a="${a}">${cellSVG(null)}</td>`;
       m++; shots++; if (c.hit) { n++; hits++; } if (c.miss) { misses++; if (c.hit) missHits++; }
-      return `<td class="c${c.miss ? ' miss' : ''}" data-r="${r}" data-a="${a}">${c.z != null ? cellSVG(c) : `<span class="mk ${c.hit ? 'h' : 'x'}">${c.hit ? '○' : '×'}</span>`}${c.miss ? '<span class="missb">MISS</span>' : ''}</td>`;
+      return `<td class="c${c.miss ? ' miss' : ''}" data-r="${r}" data-a="${a}">${cellSVG(c, true)}${c.miss ? '<span class="missb">MISS</span>' : ''}</td>`;
     }).join('');
     h += `<tr class="${nc && nc[0] === r ? 'cur' : ''}"><th>${r + 1}</th>${cells}<td class="n${n === 5 ? ' full' : ''}">${m ? n : ''}</td></tr>`;
   });
@@ -1675,7 +1676,7 @@ function sheetTableHTML(sh){
   let h = '<tr><th style="width:13%">순</th>' + [1, 2, 3, 4, 5].map(i => `<th>${i}시</th>`).join('') + '<th style="width:13%">중</th></tr>';
   sh.forEach((row, r) => {
     if (!row.some(Boolean)) return;
-    let n = 0; const cells = row.map(c => { if (!c) return '<td class="c"></td>'; if (c.hit) n++; return `<td class="c${c.miss ? ' miss' : ''}">${c.z != null ? cellSVG(c) : `<span class="mk ${c.hit ? 'h' : 'x'}">${c.hit ? '○' : '×'}</span>`}${c.miss ? '<span class="missb">MISS</span>' : ''}</td>`; }).join('');
+    let n = 0; const cells = row.map(c => { if (!c) return '<td class="c"></td>'; if (c.hit) n++; return `<td class="c${c.miss ? ' miss' : ''}">${cellSVG(c, true)}${c.miss ? '<span class="missb">MISS</span>' : ''}</td>`; }).join('');
     h += `<tr><th>${r + 1}</th>${cells}<td class="n${n === 5 ? ' full' : ''}">${n}</td></tr>`;
   });
   return h;
