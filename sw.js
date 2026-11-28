@@ -1,6 +1,6 @@
 // 국궁 표잡기 v3 오프라인 작동용 서비스 워커
 // 새 버전을 올릴 때 VERSION 숫자를 바꾸면 쓰는 사람들 기기에서도 새 파일로 바뀝니다.
-const VERSION = 'gukgung3-v59';
+const VERSION = 'gukgung3-v60';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const CDN = [
   'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',

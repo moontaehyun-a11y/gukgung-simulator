@@ -115,7 +115,8 @@ input[type=range]{width:100%;height:28px;accent-color:var(--ink);background:tran
 .story3:empty{display:none}
 .d3msg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:14px;color:var(--ink2);text-align:center;padding:0 20px}
 .hitrow{font-size:12.5px;margin-bottom:4px;gap:6px}
-.btnrow{margin-top:6px;gap:6px;flex-wrap:nowrap}.btnrow .btn{flex:1;padding:7px 4px;white-space:nowrap}
+.btnrow{margin-top:6px;gap:5px;flex-wrap:nowrap}.btnrow .btn{flex:1;padding:7px 2px;white-space:nowrap;min-width:0}
+@media (max-width:480px){.btnrow .btn{font-size:12.5px;letter-spacing:-.3px}}
 .hitrow .btn{min-height:30px;padding:4px 9px;font-size:12px}
 .hitask{position:absolute;left:12px;right:12px;top:70px;z-index:4;padding:12px 14px;max-width:460px;margin:0 auto;border:2px solid var(--red)}
 .hitask .t{font-size:15px;font-weight:800;line-height:1.4}
@@ -287,7 +288,7 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
       <input id="sZ" type="hidden" value="0"><input id="sX" type="hidden" value="0"><output id="oZ" hidden></output><output id="oX" hidden></output>
       <div class="row hitrow" id="hitRow"></div>
       <div class="row"><span class="grow hint" id="aimWords"></span></div>
-      <div class="row btnrow"><button class="btn tog" id="wxBtn" title="주변 날씨 읽기">📍 날씨</button><button class="btn tog" id="pickBtn" title="표를 손가락으로 직접 놓기">☝ 직접</button><button class="btn tog" id="guideBtn">〰 안내선</button><button class="btn tog" id="wind0">바람 0</button></div>
+      <div class="row btnrow"><button class="btn tog" id="wxBtn" title="주변 날씨 읽기">📍 날씨</button><button class="btn tog" id="pickBtn" title="표를 손가락으로 직접 놓기">☝ 직접</button><button class="btn tog" id="guideBtn">〰 안내선</button><button class="btn tog" id="wind0">바람 0</button><button class="btn tog" id="wxClear" title="지금 날씨 정보(기압·바람·기온·하늘) 지우기">날씨 지우기</button></div>
     </div>
 
     <!-- ③ 설정한 표로 쏘고 확인 -->
@@ -1074,6 +1075,9 @@ $('persClose').onclick = closePers;
 $('persFactory').onclick = () => { P = { ...DEF }; saveP(); renderPers(); syncSliders(); draw(); toast('초기값으로 돌렸습니다'); };
 $('persFix').onclick = () => { DEF = { ...P }; store('gukgung3-def', DEF); toast(`지금 기준을 초기값으로 고정했습니다 (상하 ${cm(P.baseY)} · 좌우 ${cm(P.baseZ || 0)} · 고기압 ${Math.round(P.perHpa * 100)} · 저기압 ${Math.round(perOf(-1) * 100)} · 좌우바람 ${cm(P.kw)} · 앞뒤바람 ${cm(P.kx)} cm)`); };
 $('tutAgain').onclick = () => { closePers(); setTimeout(() => window.showTut && window.showTut(), 200); };
+// 지금 날씨 정보만 지우기 (기압·바람·기온·주변 기압·공기 밀도·하늘). 습사 기록·개인 기준은 그대로
+function clearWx(){ const keep = { sheet: S.sheet, hits: S.hits, date: S.date || today(), step: S.step }; S = Object.assign(TODAY0(), keep); saveS(); syncSliders(); renderWxCard(); renderHits(); draw(); }
+$('wxClear').onclick = () => { if (!S.wx && !S.w.x && !S.w.z && S.pressure === 1013) { toast('지울 날씨 정보가 없습니다'); return; } clearWx(); toast('날씨 정보를 지웠습니다 — 기압 1013 hPa · 바람 없음'); };
 $('resetToday').onclick = () => { const keep = { sheet: S.sheet, hits: S.hits, date: S.date || today() }; S = Object.assign(TODAY0(), keep); saveS(); /* 기압·바람만 지우고 습사 기록은 그대로 */ closePers(); setStep(2); renderHits(); renderSheet(); toast('오늘 값만 지웠습니다 (개인 기준은 그대로)'); };
 
 // ---------- 날씨 (GPS → Open-Meteo) ----------
