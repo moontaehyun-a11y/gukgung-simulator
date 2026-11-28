@@ -241,6 +241,8 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
 .slw{display:flex;align-items:center;gap:6px;min-width:0}
 .slw input{flex:1;min-width:0}
 .slw .sb{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:18px;font-weight:800;line-height:1;padding:0;color:var(--ink)}
+.brief{font-size:13px;line-height:1.45}
+.brief b{font-size:13.5px}
 </style>
 </head>
 <body>
@@ -609,6 +611,7 @@ function renderWxCard(){
   const L = S.wx, src = L ? `${(L.time || '').slice(11, 16)} ${L.range ? L.range + ' · ' : ''}${DIR16n(L.dir)}풍 ${fmt(L.v)} m/s${L.gust != null ? ` (돌풍 ${fmt(L.gust)})` : ''}` : '날씨 직접 맞추기';
   const pe = excess(S.pressure), pb = pe > 0 ? ['고', 'hi'] : pe < 0 ? ['저', 'lo'] : ['평', 'mid'];
   $('wxCard').innerHTML = `<span class="pbadge ${pb[1]}" title="${pClass(S.pressure)}">${pb[0]}</span>${gaugeSVG(S.pressure)}<div class="t"><span class="tmp">${S.wx ? `${S.sky ? skyIcon(skyState()) + ' ' : ''}${S.tempC}°C${S.rho ? ` · 공기 ${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : ''}` : '기온 —'}</span><b>${S.pressure} hPa</b><small>${pClass(S.pressure)}${S.pRef != null ? ` · 주변 ${Math.round(S.pRef)}` : ''}</small></div>${windSVG(S.w)}<div class="t" style="flex:1"><b>${shortWind(S.w)}</b><small>${src}</small></div>`;
+  const bf = document.querySelector('#hitRow .brief'); if (bf) bf.innerHTML = briefing();   // 아래 브리핑도 함께
 }
 
 // ---------- 단계 전환 ----------
@@ -969,11 +972,22 @@ function hitProposal(){
   return { n, mz, my, items: out, note, sig: H.length + ':' + H[H.length - 1].t };
 }
 let hitNo = null;
+// 아래 안내 칸: 지금 바람·기압·공기 밀도를 한눈에 브리핑
+function briefing(){
+  const w = S.w, sp = Math.hypot(w.x, w.z), st = skyState();
+  const head = S.wx ? `${S.sky ? `${skyIcon(st)} ${SKY_WORD[st.t]} · ` : ''}${S.tempC}°C · ` : '';
+  const wind = sp < 0.05 ? '바람 없음' : windWords(w);
+  let ws = ['', '']; try { ws = WIND_SIGNS.find(x => Math.max(Math.abs(w.x), Math.abs(w.z)) < x[0]); } catch (x) {}
+  const e = excess(S.pressure);
+  const pres = e ? `${e > 0 ? '고기압' : '저기압'} (${S.pRef != null ? '주변' : '1013'}보다 ${e > 0 ? '+' : ''}${e} hPa) → 표 ${e > 0 ? '위로' : '아래로'}` : `평기압 (${S.pRef != null ? '주변과 비슷' : '1013 hPa 기준'})`;
+  const rp = rhoPct(), air = !S.rho ? '' : Math.abs(rp) < 1 ? '공기 밀도 보통' : `공기 ${rp > 0 ? '+' : ''}${rp.toFixed(1)}% ${rp > 0 ? '무거움 → 화살이 덜 감' : '가벼움 → 화살이 더 감'}`;
+  return `<b>${head}${wind}${sp >= 0.05 && ws[1] ? ` (${ws[1]})` : ''}</b><br>${[pres, air].filter(Boolean).join(' · ')}`;
+}
 function renderHits(){
   const H = S.hits || [], Hn = H.filter(p => !p.used), nu = H.length - Hn.length;
   $('hitRow').innerHTML = H.length
     ? `<span class="grow">🎯 화살 <b>${Hn.length}발</b>${Hn.length >= 2 ? ` · 평균 ${hitWords(hitAvg(Hn))}` : ''}${nu ? ` <span style="color:var(--ink2)">(보정 반영 ${nu}발)</span>` : ''}</span><button class="btn" id="hitUndo">↶</button><button class="btn" id="hitClr">지우기</button>`
-    : '<span class="grow">맞은 자리를 <b>길게 누르면</b> 화살이 기록됩니다</span>';
+    : `<span class="grow brief">${briefing()}</span>`;
   if (H.length) { $('hitUndo').onclick = () => { const h = S.hits.pop(); if (h) S.sheet.forEach(row => row.forEach((c, a) => { if (c && c.t === h.t) row[a] = null; })); saveS(); renderHits(); renderSheet(); draw(); }; $('hitClr').onclick = () => { S.hits = []; saveS(); renderHits(); draw(); }; }
   const pr = hitProposal(), box = $('hitAsk');
   if (!pr || hitNo === pr.sig || S.step !== 2) { box.hidden = true; return; }
