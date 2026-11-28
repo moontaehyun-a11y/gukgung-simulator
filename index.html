@@ -233,6 +233,13 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
 /* 현장 바람 질문: 과녁을 가리지 않게 아래쪽 조작판 자리에 띄운다 */
 #vAsk{background:transparent;align-items:flex-end;justify-content:center;pointer-events:none;padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
 #vAsk .sheet{pointer-events:auto;width:100%;box-shadow:0 -4px 22px rgba(0,0,0,.22)}
+.bpbar{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:60;background:#fbf8f1;border:2px solid #1f5fbf;border-radius:14px;padding:10px 12px;box-shadow:0 -4px 20px rgba(0,0,0,.2)}
+.bpbar .t{font-size:14px;font-weight:800;color:#1f5fbf}
+.bpbar .v{font-size:13px;margin:3px 0 8px}
+/* 슬라이더 양옆 − + 버튼 */
+.slw{display:flex;align-items:center;gap:6px;min-width:0}
+.slw input{flex:1;min-width:0}
+.slw .sb{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:18px;font-weight:800;line-height:1;padding:0;color:var(--ink)}
 </style>
 </head>
 <body>
@@ -303,6 +310,11 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
 </main>
 
 <!-- ① 시작: 날씨 읽기 -->
+<div class="bpbar" id="bpBar" hidden>
+  <div class="t">평소 보는 표 자리를 과녁에서 누르거나 끌어 놓으세요</div>
+  <div class="v" id="bpVal"></div>
+  <div class="row"><button class="btn red grow" id="bpOk">이 자리로 정하기</button><button class="btn" id="bpCancel">취소</button></div>
+</div>
 <div class="veil" id="vAsk" hidden>
   <div class="sheet" style="max-width:360px">
     <h2>현장 바람과 차이가 큰가요?</h2>
@@ -366,6 +378,7 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
     <div class="pbox">
     <div class="pbt">평소 보는 표 위치를 설정하세요.</div>
     <div class="sl"><label for="kB">상하 기준</label><input id="kB" type="range" min="-3" max="8" step="0.01"><output id="oB"></output></div>
+    <div class="row"><button class="btn red grow" id="bpBtn">☝ 과녁에서 손으로 찍어 정하기</button></div>
     <div class="row bzfine"><button class="btn tog" id="byD10" title="10cm 아래로">▼10</button><button class="btn tog" id="byD" title="1cm 아래로">▼1</button><button class="btn tog" id="byU" title="1cm 위로">▲1</button><button class="btn tog" id="byU10" title="10cm 위로">▲10</button><span class="hint" style="align-self:center">cm</span></div>
     <div class="hint" style="margin:-2px 0 6px 70px">평기압·표준 공기(15 °C)·바람 없을 때 겨냥 높이</div>
     <div class="sl"><label for="kBZ">좌우 기준</label><input id="kBZ" type="range" min="-1" max="1" step="0.01" list="bzTicks"><output id="oBZ"></output></div>
@@ -445,6 +458,7 @@ const blankSheet = () => Array.from({ length: 9 }, () => Array(5).fill(null));
 const TODAY0 = () => ({ step: 2, pressure: 1013, pRef: null, rho: null, tempC: 15, w: { x: 0, z: 0 }, wx: null, range: null, shots: [], hits: [], sheet: blankSheet(), date: null });
 let S = load('gukgung3-today', TODAY0());
 const saveP = () => store('gukgung3-pers', P), saveS = () => store('gukgung3-today', S);
+var basePick = false;   // 개인 기준: 과녁에서 손으로 기준표 찍기 중
 let guide = (() => { try { return localStorage.getItem('gukgung3-guide') !== '0'; } catch (e) { return true; } })();
 
 // ---------- 표 계산 ----------
@@ -486,21 +500,22 @@ function draw(){
   const { g, w, h } = fit();
   // 위 날씨 카드와 아래 조작판을 피해 과녁이 보이는 칸을 정한다
   // 표잡기: 위 정보 카드 + ▲ 버튼 아래, 아래 ▼·기압풍 버튼 위까지만 과녁을 그린다 → 표를 올리거나 내려도 가려지지 않게
-  const nudgeRow = S.step === 2 && $('vPers').hidden ? 56 : 0;
+  const nudgeRow = S.step === 2 && $('vPers').hidden && !basePick ? 56 : 0;
   const topH = 8 + nudgeRow;
   const panel = !$('vPers').hidden ? $('vPers').querySelector('.sheet') : !$('pAim').hidden ? $('pAim') : !$('pCheck').hidden ? $('pCheck') : null;
   // 쏘고 확인 단계는 아래 판에 가려지지 않게 판 높이만큼 비워 둔다 (짧은 화살도 누를 수 있게)
-  const botH = panel ? panel.offsetHeight * (!$('vPers').hidden ? 0.85 : S.step === 3 ? 1 : S.step === 2 ? 1 : 0.55) + 12 + nudgeRow : 12;
+  const botH = basePick ? $('bpBar').offsetHeight + 16 : panel ? panel.offsetHeight * (!$('vPers').hidden ? 0.85 : S.step === 3 ? 1 : S.step === 2 ? 1 : 0.55) + 12 + nudgeRow : 12;
   const a = aim(), c0 = center0();
   // 과녁 둘레 여백: 아래로 1.6 m(짧은 화살), 위로 0.6 m, 좌우 0.9 m까지 늘 보이게
-  const mg = S.step === 3 ? { s: 0.9, b: 1.6, t: 0.6 } : !$('vPers').hidden ? { s: 0.1, b: 0.15, t: 0.15 } : { s: 0.3, b: 0.35, t: 0.35 };
-  const pts = [{ z: -TW / 2 - mg.s, y: -mg.b }, { z: TW / 2 + mg.s, y: TH + mg.t }, a, ...S.shots, ...(S.hits || []).slice(-12)];
+  const mg = S.step === 3 ? { s: 0.9, b: 1.6, t: 0.6 } : !$('vPers').hidden || basePick ? { s: 0.1, b: 0.15, t: 0.15 } : { s: 0.3, b: 0.35, t: 0.35 };
+  const pts = basePick ? [{ z: -TW / 2 - mg.s, y: -mg.b }, { z: TW / 2 + mg.s, y: TH + mg.t }, { z: P.baseZ || 0, y: P.baseY }]   // 손으로 찍을 때는 과녁 전체가 꽉 차게
+    : [{ z: -TW / 2 - mg.s, y: -mg.b }, { z: TW / 2 + mg.s, y: TH + mg.t }, a, ...S.shots, ...(S.hits || []).slice(-12)];
   if (S.step === 3 && !finalView) pts.push(expected());
   let zmin = Math.min(...pts.map(p => p.z)) - 0.35, zmax = Math.max(...pts.map(p => p.z)) + 0.35;
   let ymin = Math.min(...pts.map(p => p.y)) - 0.3, ymax = Math.max(...pts.map(p => p.y)) + 0.35;
   const m = Math.max(Math.abs(zmin), Math.abs(zmax)); zmin = -m; zmax = m;   // 과녁을 가운데에
   const fh = Math.max(120, h - topH - botH);
-  const persOpen = !$('vPers').hidden;   // 개인 기준을 맞출 때는 좌우 버튼이 숨으니 과녁을 크게
+  const persOpen = !$('vPers').hidden || basePick;   // 개인 기준을 맞출 때는 좌우 버튼이 숨으니 과녁을 크게
   const side = S.step === 2 && !persOpen ? 128 : 16;   // 표잡기에서는 좌우 버튼 자리를 비운다
   const s = Math.min((w - side) / (zmax - zmin), fh / (ymax - ymin)) * (persOpen ? 0.97 : 0.8);   // 과녁을 조금 작게 → 둘레 여유를 넓게
   const cz = 0, cyv = (ymin + ymax) / 2, oy = topH + fh / 2;
@@ -554,7 +569,8 @@ function draw(){
     g.save(); g.strokeStyle = '#1f5fbf'; g.lineWidth = 2; g.setLineDash([4, 3]); g.beginPath(); g.arc(X(ex.z), Y(ex.y), 13, 0, Math.PI * 2); g.stroke(); g.restore();
     label(g, '맞아야 할 자리', X(ex.z) + 16, Y(ex.y) + 18, '#1f5fbf');
     S.shots.forEach((p, i) => { g.fillStyle = '#123d8a'; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(X(p.z), Y(p.y), 9, 0, Math.PI * 2); g.fill(); g.stroke(); g.fillStyle = '#fff'; g.font = '800 11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(i + 1, X(p.z), Y(p.y) + 0.5); });
-  } else { drawHits(g, X, Y); mark(g, X(a.z), Y(a.y), '#c2362b', '오늘 표'); }
+  } else if (basePick) { mark(g, X(P.baseZ || 0), Y(P.baseY), '#1f5fbf', '기준표 (바람 없을 때)'); }
+  else { drawHits(g, X, Y); mark(g, X(a.z), Y(a.y), '#c2362b', '오늘 표'); }
   placeNudges();
 }
 function label(g, t, x, y, col){ g.font = '800 13px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,.92)'; g.strokeText(t, x, y); g.fillStyle = col; g.fillText(t, x, y); }
@@ -797,7 +813,7 @@ function nudge(k, d){
   showWindSign(k === 'x' ? (w.x < 0 ? '맞바람' : w.x > 0 ? '순풍' : '앞뒤 바람') : (w.z > 0 ? '왼쪽바람' : w.z < 0 ? '오른쪽바람' : '옆바람'), v);
 }
 function placeNudges(){
-  const show = S.step === 2 && $('vPers').hidden;
+  const show = S.step === 2 && $('vPers').hidden && !basePick;
   ['nU', 'nD', 'nL', 'nR', 'pDn', 'pUp'].forEach(id => $(id).hidden = !show);
   if (!show || !view) return;
   // 실제 화면에서 위 카드·아래 판의 자리를 재서, 버튼이 슬라이더 판이나 날씨 카드를 덮지 않게 그 사이에만 둔다
@@ -1734,6 +1750,48 @@ document.addEventListener('touchmove', e => { if (e.touches.length > 1 && !e.tar
 document.addEventListener('dblclick', e => { if (!e.target.closest('#w3d')) e.preventDefault(); }, { passive: false });
 document.addEventListener('contextmenu', e => { if (!e.target.closest('input[type=text],input:not([type]),textarea,.field')) e.preventDefault(); });
 $('wxModel').onchange = () => { P.wxModel = $('wxModel').value; saveP(); renderPers(); toast(`날씨 모델: ${wxModelName(P.wxModel)} — 다음 날씨 스캔부터 씁니다`); };
+// ---------- 개인 기준: 과녁에서 손으로 기준표 찍기 ----------
+(() => {
+  let old = null, drag = false;
+  const show = () => { $('bpVal').textContent = `상하 ${cm(P.baseY)} cm · 좌우 ${(P.baseZ || 0) === 0 ? '가운데' : `${(P.baseZ > 0 ? '오른쪽 ' : '왼쪽 ')}${Math.abs(cm(P.baseZ))} cm`}`; };
+  const setAt = e => { const r = cv.getBoundingClientRect(), q = view.inv(e.clientX - r.left, e.clientY - r.top); P.baseY = Math.round(clamp(q.y, -3, 8) * 100) / 100; P.baseZ = Math.round(clamp(q.z, -1, 1) * 100) / 100; show(); draw(); };
+  $('bpBtn').onclick = () => {
+    old = { y: P.baseY, z: P.baseZ || 0 }; basePick = true;
+    $('vPers').hidden = true; $('windSign').hidden = true; ['pAim', 'pCheck'].forEach(id => $(id).style.visibility = 'hidden');
+    $('bpBar').hidden = false; show(); draw();
+  };
+  const end = keep => {
+    if (!keep && old) { P.baseY = old.y; P.baseZ = old.z; }
+    basePick = false; drag = false; $('bpBar').hidden = true; saveP(); syncSliders();
+    renderPers(); $('vPers').hidden = false; draw();
+    toast(keep ? `기준표를 정했습니다 — 상하 ${cm(P.baseY)} cm` : '취소했습니다');
+  };
+  $('bpOk').onclick = () => end(true); $('bpCancel').onclick = () => end(false);
+  cv.addEventListener('pointerdown', e => { if (!basePick || !view) return; e.stopImmediatePropagation(); e.preventDefault(); drag = true; try { cv.setPointerCapture(e.pointerId); } catch (x) {} setAt(e); }, true);
+  cv.addEventListener('pointermove', e => { if (basePick && drag) { e.stopImmediatePropagation(); setAt(e); } }, true);
+  ['pointerup', 'pointercancel'].forEach(t => cv.addEventListener(t, e => { if (basePick) { e.stopImmediatePropagation(); drag = false; } }, true));
+})();
+// ---------- 개인 기준 슬라이더: 덜 민감하게 ----------
+// 누른 자리로 튀지 않고, 끈 거리만큼만 천천히 움직인다 (원래보다 약 3배 둔하게). 양옆 − + 버튼으로 한 칸씩
+document.querySelectorAll('#vPers input[type=range]').forEach(r => {
+  const wrap = document.createElement('div'); wrap.className = 'slw'; r.parentNode.insertBefore(wrap, r);
+  const mk = (t, d) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'sb'; b.textContent = t; b.onclick = () => bump(d); return b; };
+  const bump = d => { const st = +r.step || 1, nv = clamp(+r.value + d * st, +r.min, +r.max); r.value = nv; r.dispatchEvent(new Event('input', { bubbles: true })); };
+  wrap.append(mk('−', -1), r, mk('+', 1));
+  r.style.touchAction = 'none';
+  let st = null;
+  const down = (x, id) => { st = { x, v: +r.value }; if (id != null) try { r.setPointerCapture(id); } catch (e) {} };
+  r.addEventListener('pointerdown', e => { e.preventDefault(); down(e.clientX, e.pointerId); });
+  r.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+  r.addEventListener('mousedown', e => e.preventDefault());
+  r.addEventListener('pointermove', e => {
+    if (!st) return;
+    const min = +r.min, max = +r.max, step = +r.step || 1, steps = (max - min) / step, w = r.getBoundingClientRect().width;
+    const pxPer = clamp(w / steps * 3, 3, 12), nv = clamp(st.v + Math.round((e.clientX - st.x) / pxPer) * step, min, max);
+    if (+r.value !== nv) { r.value = nv; r.dispatchEvent(new Event('input', { bubbles: true })); }
+  });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => r.addEventListener(t, () => { st = null; }));
+});
 // 안드로이드 브라우저는 주소창·아래 메뉴가 나타났다 사라지며 보이는 높이가 바뀐다 → 실제 보이는 높이로 창 크기를 맞춘다
 function setVVH(){ const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight; document.documentElement.style.setProperty('--vvh', h + 'px'); }
 setVVH(); window.addEventListener('resize', setVVH); if (window.visualViewport) window.visualViewport.addEventListener('resize', setVVH);
