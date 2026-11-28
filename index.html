@@ -898,12 +898,10 @@ function renderCheck(){
   proposal = [];
   // 좌우: 벗어난 만큼 표를 더(덜) 옮겼어야 했다 → (설정한 이동 + 벗어난 거리) ÷ 옆바람 = 맞는 좌우 간격
   if (!okZ && Math.abs(S.w.z) >= 0.5) { const k = clamp((P.kw * S.w.z + dz) / S.w.z, 0.05, 0.50); if (Math.abs(k - P.kw) >= 0.01) proposal.push({ key: 'kw', name: '좌우 간격', from: cm(P.kw), to: cm(k), v: k }); }
-  else if (!okZ) { const v = clamp((P.baseZ || 0) - dz, -1, 1); proposal.push({ key: 'baseZ', name: '기준표 좌우', from: cm(P.baseZ || 0), to: cm(v), v, unit: 'cm (+오른쪽)' }); }
   // 위아래: 앞뒤 바람이 있으면 앞뒤 간격, 없으면 기압 간격, 평기압·무풍이면 상하 기준
   if (!okY) {
     if (Math.abs(S.w.x) >= 0.5) { const need = -P.kx * S.w.x - dy, k = clamp(-need / S.w.x, 0.05, 0.50); if (Math.abs(k - P.kx) >= 0.01) proposal.push({ key: 'kx', name: '앞뒤 간격', from: cm(P.kx), to: cm(k), v: k }); }
     else if (excess(S.pressure) !== 0) { const e = excess(S.pressure), k = clamp((pShift() - dy) / e, 0.01, 0.60); const kr = Math.max(1, Math.round(k * 100)) / 100; proposal.push({ key: e < 0 ? 'perHpaLo' : 'perHpa', name: e < 0 ? '저기압 간격' : '고기압 간격', from: Math.round(P.perHpa * 100), to: Math.round(kr * 100), v: kr, unit: 'cm/hPa' }); }
-    else proposal.push({ key: 'baseY', name: '상하 기준', from: cm(P.baseY), to: cm(clamp(P.baseY - dy, -3, 8)), v: clamp(P.baseY - dy, -3, 8), unit: 'cm(바닥에서)' });
   }
   const dirZ = Math.abs(dz) < 0.02 ? '' : `${dz > 0 ? '오른쪽' : '왼쪽'}으로 ${cm(Math.abs(dz))} cm`, dirY = Math.abs(dy) < 0.02 ? '' : `${dy > 0 ? '위' : '아래'}로 ${cm(Math.abs(dy))} cm`;
   const good = okZ && okY;
@@ -945,11 +943,11 @@ function hitProposal(){
   const H = (S.hits || []).filter(p => !p.used && !p.bad); if (H.length < 3) return null;
   const n = H.length, dz = H.map(p => p.z), dy = H.map(p => p.y - CY), mz = dz.reduce((a, b) => a + b, 0) / n, my = dy.reduce((a, b) => a + b, 0) / n;
   const same = (arr, m) => arr.filter(v => Math.sign(v) === Math.sign(m)).length >= Math.ceil(n * 2 / 3);   // 2/3 이상이 같은 쪽
-  const out = [];
+  const out = [], note = [];
   if (Math.abs(mz) >= 0.15 && same(dz, mz)) {
     const side = H.filter(p => Math.abs(p.w.z) >= 0.5);
     if (side.length >= Math.ceil(n / 2)) { const k = clamp(side.reduce((s, p) => s + (p.kw * p.w.z + p.z) / p.w.z, 0) / side.length, 0.05, 0.5); if (Math.abs(k - P.kw) >= 0.01) out.push({ key: 'kw', name: '좌우 간격', from: cm(P.kw), to: cm(k), v: k, unit: 'cm/(m/s)' }); }
-    else { const v = clamp((P.baseZ || 0) - mz, -1, 1); out.push({ key: 'baseZ', name: '기준 좌우', from: cm(P.baseZ || 0), to: cm(v), v, unit: 'cm (+오른쪽)' }); }
+    else note.push('옆바람이 없는데 좌우로 몰렸습니다');   // 기준표 자리는 설정한 사람이 놓은 그대로 둔다 (간격만 맞춘다)
   }
   if (Math.abs(my) >= 0.2 && same(dy, my)) {
     const fb = H.filter(p => Math.abs(p.w.x) >= 0.5), pr = H.filter(p => excess(p.p, p.pr) !== 0);
@@ -959,9 +957,16 @@ function hitProposal(){
       const k = clamp(grp.reduce((s, p) => s + (perOf(excess(p.p, p.pr), p) * excess(p.p, p.pr) - (p.y - CY)) / excess(p.p, p.pr), 0) / grp.length, 0.01, 0.6), kr = Math.max(1, Math.round(k * 100)) / 100;
       out.push({ key, name: lo ? '저기압 간격' : '고기압 간격', from: Math.round(perOf(lo ? -1 : 1) * 100), to: Math.round(kr * 100), v: kr, unit: 'cm/hPa' });
     }
-    else { const v = clamp(P.baseY - my, -3, 8); out.push({ key: 'baseY', name: '상하 기준', from: cm(P.baseY), to: cm(v), v, unit: 'cm' }); }
+    else {
+      const rd = H.filter(p => p.rho && Math.abs((p.rho / RHO0 - 1) * 100) >= 1);
+      if (rd.length >= Math.ceil(n / 2)) {   // 공기 밀도 몫으로 설명: (넣은 이동 − 벗어난 거리) ÷ 밀도 % = 맞는 공기 밀도 간격
+        const k = clamp(rd.reduce((s, p) => { const pc = (p.rho / RHO0 - 1) * 100; return s + ((p.kr ?? P.kRho ?? 0.1) * pc - (p.y - CY)) / pc; }, 0) / rd.length, 0, 0.3), kr = Math.round(k * 100) / 100;
+        if (Math.abs(kr - (P.kRho ?? 0.1)) >= 0.01) out.push({ key: 'kRho', name: '공기 밀도 간격', from: cm(P.kRho ?? 0.1), to: cm(kr), v: kr, unit: 'cm/1%' });
+      } else note.push('앞뒤 바람·기압 차이가 없는데 위아래로 몰렸습니다');
+    }
   }
-  return out.length ? { n, mz, my, items: out, sig: H.length + ':' + H[H.length - 1].t } : null;
+  if (!out.length && !note.length) return null;
+  return { n, mz, my, items: out, note, sig: H.length + ':' + H[H.length - 1].t };
 }
 let hitNo = null;
 function renderHits(){
@@ -974,9 +979,9 @@ function renderHits(){
   if (!pr || hitNo === pr.sig || S.step !== 2) { box.hidden = true; return; }
   box.hidden = false;
   box.innerHTML = `<div class="t">화살이 한쪽으로 몰립니다</div>
-    <div class="s">${pr.n}발 평균이 홍심 한가운데에서 ${hitWords({ z: pr.mz, y: CY + pr.my })} 벗어났습니다. 개인 기준을 맞출까요?<br>${pr.items.map(i => `${i.name} <b>${i.from} → ${i.to}</b> ${i.unit}`).join('<br>')}</div>
-    <div class="row"><button class="btn red grow" id="hitYes">예, 맞추기</button><button class="btn grow" id="hitNoB">아니오</button></div>`;
-  $('hitYes').onclick = () => { pr.items.forEach(i => { P[i.key] = i.v; }); saveP(); (S.hits || []).forEach(p => p.used = true); saveS(); syncSliders(); renderHits(); draw(); toast('개인 기준을 맞췄습니다. 이후 화살로 다시 확인합니다'); };
+    <div class="s">${pr.n}발 평균이 홍심 한가운데에서 ${hitWords({ z: pr.mz, y: CY + pr.my })} 벗어났습니다.${pr.items.length ? ` 기준표 자리는 그대로 두고 <b>간격</b>을 맞출까요?<br>${pr.items.map(i => `${i.name} <b>${i.from} → ${i.to}</b> ${i.unit}`).join('<br>')}` : ''}${pr.note.length ? `<br>${pr.note.join('<br>')} — 기준표는 그대로 두고, 오늘 현장 바람이라면 <b>상하좌우 바람 버튼</b>으로 고치세요.` : ''}</div>
+    <div class="row">${pr.items.length ? '<button class="btn red grow" id="hitYes">예, 간격 맞추기</button><button class="btn grow" id="hitNoB">아니오</button>' : '<button class="btn grow" id="hitNoB">알겠어요</button>'}</div>`;
+  if ($('hitYes')) $('hitYes').onclick = () => { pr.items.forEach(i => { P[i.key] = i.v; }); saveP(); (S.hits || []).forEach(p => p.used = true); saveS(); syncSliders(); renderHits(); draw(); toast('간격을 맞췄습니다 (기준표 자리는 그대로). 이후 화살로 다시 확인합니다'); };
   $('hitNoB').onclick = () => { hitNo = pr.sig; box.hidden = true; };
 }
 function hitWords(m){
@@ -1009,7 +1014,7 @@ cv.addEventListener('pointerdown', e => {
     if (!lp || !view) return;
     const r = cv.getBoundingClientRect(), q = view.inv(x0 - r.left, y0 - r.top), a = aim();
     S.hits = S.hits || [];
-    const hp = { z: +q.z.toFixed(3), y: +q.y.toFixed(3), aim: a, w: { ...S.w }, p: S.pressure, pr: REF(), kw: P.kw, kx: P.kx, perHpa: P.perHpa, perHpaLo: perOf(-1), t: Date.now() };
+    const hp = { z: +q.z.toFixed(3), y: +q.y.toFixed(3), aim: a, w: { ...S.w }, p: S.pressure, pr: REF(), rho: S.rho, kr: P.kRho ?? 0.1, kw: P.kw, kx: P.kx, perHpa: P.perHpa, perHpaLo: perOf(-1), t: Date.now() };
     S.hits.push(hp);
     const nc = nextCell(); if (nc) { S.sheet[nc[0]][nc[1]] = { z: hp.z, y: hp.y, hit: isHit(hp), t: hp.t }; toast(`${nc[0] + 1}순 ${nc[1] + 1}시 ${isHit(hp) ? '관중 ○' : '불 ×'} — 옆으로 밀면 습사 기록`); }
     renderSheet();
@@ -1727,7 +1732,7 @@ $('pages').addEventListener('pointerup', e => {
       body: '② 화살이 맞은 자리를 과녁에서 <b>손가락으로 길게</b> 누르면 기록됩니다.<br>과녁을 벗어난 화살은 습사 기록표에서 길게 눌러 MISS로 남깁니다.',
       go: '다음', later: '그만', onGo: t3 });
     const t3 = () => spot({ els: ['nU', 'nD', 'nL', 'nR'].map($), title: '몰린 쪽을 보고 고치세요',
-      body: '③ 화살이 한쪽으로 몰리면 앱이 <b>개인 기준 보정</b>을 제안합니다. 늘 그렇다면 「예」를 누르세요.<br>오늘 바람 탓이면 이 <b>상하좌우 바람 버튼</b>으로 바람을 고치세요.',
+      body: '③ 화살이 한쪽으로 몰리면 앱이 <b>간격 보정</b>을 제안합니다. 기준표 자리는 그대로 두고 바람·기압 간격만 맞춥니다.<br>오늘 바람 탓이면 이 <b>상하좌우 바람 버튼</b>으로 바람을 고치세요.',
       go: '시작하기', later: '' , onGo: () => toast('오늘 표를 겨냥해 2~3발 쏘고, 맞은 자리를 길게 누르세요') });
     t1();
   };
