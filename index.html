@@ -727,7 +727,8 @@ const WIND_SIGNS = [
   [5.5, '산들바람', '나뭇잎과 잔가지가 쉼 없이 흔들리고 깃발이 가볍게 펄럭임'],
   [8.0, '건들바람', '먼지와 종이가 날리고 작은 가지가 흔들림, 풍향기가 거의 수평'],
   [10.8, '흔들바람', '잎 달린 작은 나무가 흔들리고 연못에 잔물결이 일어남'],
-  [99, '된바람', '큰 가지가 흔들리고 전선이 울림, 습사를 쉬는 게 좋음']
+  [13.9, '된바람', '큰 가지가 흔들리고 전선이 울림, 습사를 쉬는 게 좋음'],
+  [99, '센바람', '큰 나무 전체가 흔들리고 바람을 안고 걷기 힘듦, 습사를 쉬는 게 좋음']
 ];
 let signT = null;
 function showWindSign(label, v){
@@ -736,8 +737,9 @@ function showWindSign(label, v){
   el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
   clearTimeout(signT); signT = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 200); }, 1800);
 }
+const WMAX = 15;   // 바람 세기 한도 (m/s)
 function nudge(k, d){
-  const w = { ...S.w }; w[k] = +clamp(w[k] + d * NUDGE, -8, 8).toFixed(1); if (Math.abs(w[k]) < 0.05) w[k] = 0;
+  const w = { ...S.w }; w[k] = +clamp(w[k] + d * NUDGE, -WMAX, WMAX).toFixed(1); if (Math.abs(w[k]) < 0.05) w[k] = 0;
   S.w = w; saveS(); syncSliders(); renderWxCard(); draw();
   const v = Math.abs(w[k]);
   showWindSign(k === 'x' ? (w.x < 0 ? '맞바람' : w.x > 0 ? '순풍' : '앞뒤 바람') : (w.z > 0 ? '왼쪽바람' : w.z < 0 ? '오른쪽바람' : '옆바람'), v);
@@ -771,7 +773,7 @@ document.addEventListener('visibilitychange', () => HOLDSTOP.forEach(f => f()));
 ['nU', 'nD', 'nL', 'nR'].forEach(id => {
   const b = $(id); let t1 = null, t2 = null;
   const stop = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; };
-  b.addEventListener('pointerdown', e => { e.preventDefault(); stop(); try { b.setPointerCapture(e.pointerId); } catch (x) {} nudge(b.dataset.k, +b.dataset.d); t1 = setTimeout(() => { const t0 = Date.now(); t2 = setInterval(() => { if (Date.now() - t0 > 4000) return stop(); nudge(b.dataset.k, +b.dataset.d); }, 110); }, 420); });
+  b.addEventListener('pointerdown', e => { e.preventDefault(); stop(); try { b.setPointerCapture(e.pointerId); } catch (x) {} nudge(b.dataset.k, +b.dataset.d); t1 = setTimeout(() => { const t0 = Date.now(); t2 = setInterval(() => { const el = Date.now() - t0; if (el > 10000) return stop(); nudge(b.dataset.k, +b.dataset.d * (el > 1500 ? 2.5 : 1)); }, 110);   /* 1.5초 넘게 누르면 빨라짐 */ }, 420); });
   HOLDSTOP.push(stop);
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
 });
@@ -923,7 +925,7 @@ $('pickBtn').onclick = () => setPick(!pickOn);
 function placeAim(e){
   const r = cv.getBoundingClientRect(), q = view.inv(e.clientX - r.left, e.clientY - r.top), c = center0();
   // 표 = 기준 − 간격 × 바람  →  바람 = (기준 − 표) ÷ 간격 (기압은 그대로 두고 높이는 앞뒤 바람으로)
-  S.w = { x: +clamp((c.y - q.y) / P.kx, -8, 8).toFixed(1), z: +clamp((c.z - q.z) / P.kw, -8, 8).toFixed(1) };
+  S.w = { x: +clamp((c.y - q.y) / P.kx, -WMAX, WMAX).toFixed(1), z: +clamp((c.z - q.z) / P.kw, -WMAX, WMAX).toFixed(1) };
   saveS(); syncSliders(); renderWxCard(); draw();
 }
 cv.addEventListener('pointerdown', e => { if (!pickOn || S.step !== 2 || !view) return; pickDrag = true; placeAim(e); }, true);
@@ -1041,7 +1043,7 @@ async function ringPressure(pos, signal){
 function applyWx(wx, rg){
   const phi = (wx.dir - rg.bearing) * Math.PI / 180;   // 풍향(불어오는 쪽) − 과녁 방향
   S.pressure = clamp(Math.round(wx.p), 960, 1050); S.tempC = Math.round(wx.t ?? 15); S.pRef = wx.pRef ?? null; S.rho = wx.rho ?? null;
-  S.w = { x: +clamp(-wx.v * Math.cos(phi), -8, 8).toFixed(1), z: +clamp(-wx.v * Math.sin(phi), -8, 8).toFixed(1) };
+  S.w = { x: +clamp(-wx.v * Math.cos(phi), -WMAX, WMAX).toFixed(1), z: +clamp(-wx.v * Math.sin(phi), -WMAX, WMAX).toFixed(1) };
   S.wx = { ...wx, range: rg.name }; S.range = rg.id; saveS();
   const all = ranges(), it = all.find(g => g.id === rg.id); if (it) { it.used = Date.now(); saveRanges(all); }
   ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true);
