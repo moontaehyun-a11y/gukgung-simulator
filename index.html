@@ -1677,6 +1677,8 @@ if (S.date !== today()) { if (S.date) { const had = sheetStats(S.sheet).shots, o
 let curPage = 0;
 function goPage(n){
   curPage = n; $('pages').style.transform = `translateX(${n ? -50 : 0}%)`;
+  $('persBtn').hidden = n === 1;   // 습사 화면에서는 개인 기준(⚙) 버튼을 숨긴다
+  if (n === 1 && !$('vPers').hidden) closePers();
   if (n === 1) { renderSheet(); $('hitAsk').hidden = true; } else { renderHits(); draw(); }
   renderSheet();
 }
