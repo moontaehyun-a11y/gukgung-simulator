@@ -804,12 +804,12 @@ const WIND_SIGNS = [
   [13.9, '된바람', '큰 가지가 흔들리고 전선이 울림, 습사를 쉬는 게 좋음'],
   [99, '센바람', '큰 나무 전체가 흔들리고 바람을 안고 걷기 힘듦, 습사를 쉬는 게 좋음']
 ];
-let signT = null;
+let signT = null; const SIGN_MS = 4500;   // 바람 징후 창이 떠 있는 시간 (읽을 수 있게 넉넉히)
 function showWindSign(label, v){
   const s = WIND_SIGNS.find(x => v < x[0]), el = $('windSign');
   el.innerHTML = `<b>${label} ${fmt(v)} m/s · ${s[1]}</b><small>${s[2]}</small>`;
   el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
-  clearTimeout(signT); signT = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 200); }, 1800);
+  clearTimeout(signT); signT = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 200); }, SIGN_MS);
 }
 const WMAX = 15;   // 바람 세기 한도 (m/s)
 function nudge(k, d){
@@ -873,14 +873,14 @@ function showPressureSign(p){
   const ex = excess(p), s = P_SIGNS.find(x => ex < x[0]), el = $('windSign');
   el.innerHTML = `<b>${p} hPa · ${s[1]}${ex ? ` (주변보다 ${ex > 0 ? '+' : ''}${ex})` : ''}</b><small>${s[2]}</small>`;
   el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
-  clearTimeout(signT); signT = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 200); }, 1800);
+  clearTimeout(signT); signT = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 200); }, SIGN_MS);
 }
 function pNudge(up){   // 기압계(S.pressure)는 그대로 두고, 손으로 느낀 누르는/올리는 바람만 한 칸씩
   S.pw = clamp((S.pw || 0) + (up ? 1 : -1), -10, 10); saveS(); syncSliders(); renderWxCard(); draw();
   const n = S.pw, el = $('windSign'), cmv = Math.abs(cm(pwShift()));
   el.innerHTML = n ? `<b>${n > 0 ? '누르는 바람' : '올리는 바람'} ${Math.abs(n)}칸 · 표 ${n > 0 ? '위로' : '아래로'} ${cmv} cm</b><small>현장에서 느끼는 바람 압력으로 맞춘 값입니다</small>` : '<b>누르는·올리는 바람 없음</b><small>표가 원래 자리로 돌아왔습니다</small>';
   el.hidden = false; requestAnimationFrame(() => el.classList.add('on'));
-  clearTimeout(signT); signT = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 200); }, 1800);
+  clearTimeout(signT); signT = setTimeout(() => { el.classList.remove('on'); setTimeout(() => { if (!el.classList.contains('on')) el.hidden = true; }, 200); }, SIGN_MS);
 }
 [['pDn', true], ['pUp', false]].forEach(([id, up]) => {
   const b = $(id); let t1 = null, t2 = null;
