@@ -386,6 +386,11 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
     <div class="sl"><label for="kR">공기 밀도</label><input id="kR" type="range" min="0" max="30" step="1"><output id="oKR"></output></div>
     <div class="hint" style="margin:-2px 0 6px 70px" id="rhoHint">공기가 표준보다 1% 무거울 때 위로 이동 (춥고 기압이 높을수록 무거움)</div>
     </div>
+    <div class="pbox">
+    <div class="pbt">날씨 모델 — 날씨 스캔에 쓸 예보 모델을 고릅니다.</div>
+    <div class="row"><select class="field" id="wxModel" style="flex:1"></select></div>
+    <div class="hint" id="wxModelHint" style="margin:4px 0 2px"></div>
+    </div>
     <div class="perstut" id="fixTut" hidden><div class="t">👇 지금 값을 초기값으로 고정을 눌러주세요</div><div class="s">상하 기준과 좌우 기준을 모두 움직였습니다. 아래 <b>지금 값을 초기값으로 고정</b>을 누르면 이 기준표가 저장되어, 초기화해도 이 자리로 돌아옵니다.</div></div>
     <div class="row" style="margin-top:10px"><button class="btn red" id="persFix">지금 값을 초기값으로 고정</button><button class="btn" id="persFactory">초기값으로</button></div>
     <hr style="border:0;border-top:1px solid var(--line);margin:14px 0 10px">
@@ -971,6 +976,8 @@ cv.addEventListener('pointerup', e => {
 
 // ---------- 개인 기준 ----------
 function renderPers(){
+  const ms = $('wxModel'); if (!ms.options.length) ms.innerHTML = WX_MODELS.map(m => `<option value="${m[0]}">${m[1]}</option>`).join('');
+  ms.value = P.wxModel || 'best_match'; $('wxModelHint').textContent = (WX_MODELS.find(x => x[0] === ms.value) || WX_MODELS[0])[2];
   $('kB').value = P.baseY; $('oB').textContent = `${cm(P.baseY)} cm`; $('kB').title = '과녁 바닥에서의 높이';
   $('kBZ').value = P.baseZ || 0; $('oBZ').textContent = Math.abs(P.baseZ || 0) < 0.005 ? '가운데' : `${P.baseZ > 0 ? '오른쪽' : '왼쪽'} ${cm(Math.abs(P.baseZ))} cm`;
   $('kP').value = Math.round(P.perHpa * 100); $('oKP').textContent = `${Math.round(P.perHpa * 100)} cm`;
@@ -1014,14 +1021,28 @@ const saveRanges = a => store('gukgung-ranges', a);
 const km = (a, b) => { const r = Math.PI / 180, dA = (b.lat - a.lat) * r, dO = (b.lon - a.lon) * r, h = Math.sin(dA / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dO / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); };
 const nearRange = pos => ranges().filter(g => km(pos, g) < 1.5).sort((a, b) => km(pos, a) - km(pos, b))[0] || null;
 function getPos(){ return new Promise((res, rej) => { if (!navigator.geolocation) return rej({ code: 0 }); navigator.geolocation.getCurrentPosition(p => res({ lat: p.coords.latitude, lon: p.coords.longitude }), rej, { enableHighAccuracy: true, timeout: 12000, maximumAge: 120000 }); }); }
-async function fetchWx(pos){
+// 날씨 모델 (Open-Meteo, 인증키 필요 없음). 기상청(KMA) 모델은 2026년 3월 말 제공이 끊겨 뺐다
+const WX_MODELS = [
+  ['best_match', '자동 (지역별 가장 좋은 모델)', 'Open-Meteo가 위치마다 해상도가 가장 높은 모델을 골라 줍니다.'],
+  ['jma_seamless', '일본 기상청 JMA (한반도 5 km)', '한반도를 촘촘하게 보는 고해상도 모델. 돌풍 값은 없습니다.'],
+  ['ecmwf_ifs', '유럽 ECMWF (9 km)', '큰 기압 배치 예보가 정확하기로 유명한 모델.'],
+  ['icon_seamless', '독일 DWD ICON', '전 지구 모델. 다른 모델과 비교용으로 좋습니다.'],
+  ['gfs_seamless', '미국 NOAA GFS', '전 지구 모델. 다른 모델과 비교용으로 좋습니다.'],
+  ['ukmo_seamless', '영국 기상청 UKMO (10 km)', '기상청이 오래 함께 써 온 영국 UM 계열 모델.'],
+  ['cma_grapes_global', '중국 기상국 CMA', '전 지구 모델. 서해 쪽 기류 비교용.'],
+  ['gem_seamless', '캐나다 GEM', '전 지구 모델. 다른 모델과 비교용.']
+];
+const wxModelName = m => (WX_MODELS.find(x => x[0] === m) || WX_MODELS[0])[1].replace(/ \(.*\)$/, '');
+async function fetchWx(pos, model = P.wxModel || 'best_match'){
   const ac = new AbortController(), t = setTimeout(() => ac.abort(), 12000);
   try {
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.lat.toFixed(4)}&longitude=${pos.lon.toFixed(4)}&current=pressure_msl,surface_pressure,temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms&timezone=auto`, { signal: ac.signal, cache: 'no-store' });
-    const c = (await r.json()).current; if (!c || c.pressure_msl == null) throw 0;
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.lat.toFixed(4)}&longitude=${pos.lon.toFixed(4)}&current=pressure_msl,surface_pressure,temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms&timezone=auto&models=${model}`, { signal: ac.signal, cache: 'no-store' });
+    const c = (await r.json()).current;
+    if (!c || c.pressure_msl == null || c.wind_speed_10m == null) { if (model !== 'best_match') { const w2 = await fetchWx(pos, 'best_match'); w2.fallbackFrom = model; return w2; } throw 0; }
     const wx = { time: c.time, p: c.pressure_msl, t: c.temperature_2m, v: c.wind_speed_10m, dir: c.wind_direction_10m, gust: c.wind_gusts_10m, rh: c.relative_humidity_2m, ps: c.surface_pressure };
     wx.rho = airDensity(wx.ps ?? wx.p, wx.t, wx.rh);
-    try { wx.pRef = await ringPressure(pos, ac.signal); } catch (e) { wx.pRef = null; }
+    wx.model = model;
+    try { wx.pRef = await ringPressure(pos, ac.signal, model); } catch (e) { try { wx.pRef = model !== 'best_match' ? await ringPressure(pos, ac.signal, 'best_match') : null; } catch (e2) { wx.pRef = null; } }
     return wx;
   } finally { clearTimeout(t); }
 }
@@ -1032,10 +1053,10 @@ function airDensity(pHpa, tC, rh){
   return (pd * 100) / (287.058 * T) + (pv * 100) / (461.495 * T);
 }
 // 주변 기압: 지금 자리에서 200 km 떨어진 8방향 지점의 해면기압 평균
-async function ringPressure(pos, signal){
+async function ringPressure(pos, signal, model = 'best_match'){
   const R = 200, lat = [], lon = [];
   for (let k = 0; k < 8; k++) { const b = k * Math.PI / 4; lat.push((pos.lat + R / 111.2 * Math.cos(b)).toFixed(3)); lon.push((pos.lon + R / (111.2 * Math.cos(pos.lat * Math.PI / 180)) * Math.sin(b)).toFixed(3)); }
-  const j = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.join(',')}&longitude=${lon.join(',')}&current=pressure_msl&timezone=auto`, { signal, cache: 'no-store' })).json();
+  const j = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.join(',')}&longitude=${lon.join(',')}&current=pressure_msl&timezone=auto&models=${model}`, { signal, cache: 'no-store' })).json();
   const v = (Array.isArray(j) ? j : [j]).map(x => x && x.current && x.current.pressure_msl).filter(x => x != null);
   if (v.length < 5) throw 0;
   return Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10;
@@ -1048,7 +1069,7 @@ function applyWx(wx, rg){
   const all = ranges(), it = all.find(g => g.id === rg.id); if (it) { it.used = Date.now(); saveRanges(all); }
   ['vStart', 'vDir', 'vLoc'].forEach(id => $(id).hidden = true);
   setStep(2);
-  toast(`${rg.name}: ${S.tempC}°C · ${S.pressure} hPa (${S.pRef != null ? `주변 ${Math.round(S.pRef)} → ${pClass(S.pressure)}` : '주변 비교 못함'}) · 공기 ${S.rho ? `${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : '—'} · ${windWords(S.w)} 를 넣었습니다`);
+  toast(`${rg.name}: ${S.tempC}°C · ${S.pressure} hPa (${S.pRef != null ? `주변 ${Math.round(S.pRef)} → ${pClass(S.pressure)}` : '주변 비교 못함'}) · 공기 ${S.rho ? `${rhoPct() >= 0 ? '+' : ''}${rhoPct().toFixed(1)}%` : '—'} · ${windWords(S.w)} · ${wx.model ? wxModelName(wx.model) : '자동'}${wx.fallbackFrom ? ` (${wxModelName(wx.fallbackFrom)} 값이 없어 대신 씀)` : ''} 를 넣었습니다`);
   window.tutAfterWx && window.tutAfterWx();
   const askMsg = $('toast').textContent;
   window.showAsk = () => { $('askVal').textContent = `들어간 값: ${askMsg.replace(/^[^:]*:\s*/, '').replace(/\s*를 넣었습니다$/, '')}`; clearTimeout(toast.t); $('toast').classList.remove('on'); $('vAsk').hidden = false; };
@@ -1665,6 +1686,7 @@ $('askYes').onclick = () => {
 document.addEventListener('touchmove', e => { if (e.touches.length > 1 && !e.target.closest('#w3d')) e.preventDefault(); }, { passive: false });
 document.addEventListener('dblclick', e => { if (!e.target.closest('#w3d')) e.preventDefault(); }, { passive: false });
 document.addEventListener('contextmenu', e => { if (!e.target.closest('input[type=text],input:not([type]),textarea,.field')) e.preventDefault(); });
+$('wxModel').onchange = () => { P.wxModel = $('wxModel').value; saveP(); renderPers(); toast(`날씨 모델: ${wxModelName(P.wxModel)} — 다음 날씨 스캔부터 씁니다`); };
 // 안드로이드 브라우저는 주소창·아래 메뉴가 나타났다 사라지며 보이는 높이가 바뀐다 → 실제 보이는 높이로 창 크기를 맞춘다
 function setVVH(){ const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight; document.documentElement.style.setProperty('--vvh', h + 'px'); }
 setVVH(); window.addEventListener('resize', setVVH); if (window.visualViewport) window.visualViewport.addEventListener('resize', setVVH);
