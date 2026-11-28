@@ -265,7 +265,7 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
 #mag .mz b{font-size:15px}
 #mag .mz.h.on{background:#123d8a;border-color:#123d8a}#mag .mz.x.on{background:#a8402c;border-color:#a8402c}
 /* ---------- 활터 지형 (v4 시험) ---------- */
-#vTer{position:fixed;inset:0;z-index:55;background:var(--bg,#f3efe6);display:flex;flex-direction:column}
+#vTer{position:fixed;inset:0;z-index:55;background:var(--bg,#f3efe6);display:flex;flex-direction:column;transition:transform .28s ease}#vTer.off{transform:translateX(-100%)}
 #vTer[hidden]{display:none}
 .tmsg{margin:0 0 6px;padding:6px 10px;min-height:calc(2.7em + 12px);box-sizing:border-box;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;border-radius:8px;background:#fbefed;border:1px solid #efc9c4;color:#7a1f17;font-size:13px;font-weight:700;line-height:1.35;transition:background .3s}.tmsg.flash{background:#f6d6d1}.tmsg.idle{background:#f5f2ec;border-color:var(--line);color:var(--ink2);font-weight:600}
 #vTerLib{z-index:70;padding-top:calc(16px + env(safe-area-inset-top))}
@@ -1757,7 +1757,7 @@ function cellSVG(c, ox){   // ox: 기록된 칸은 과녁을 연하게 하고 �
 function dropHit(c){ if (c && c.t && !c.manual) { const i = (S.hits || []).findIndex(p => p.t === c.t); if (i >= 0) S.hits.splice(i, 1); } }
 function renderSheet(){
   const dt = new Date(S.date + 'T00:00:00');
-  $('sjDate').textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일 습사`;
+  $('sjDate').textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일 습사일지`;
   fitSheet(); let hits = 0, shots = 0, misses = 0, missHits = 0; const nc = nextCell();
   let h = '<tr><th style="width:13%">순</th>' + [1, 2, 3, 4, 5].map(i => `<th>${i}시</th>`).join('') + '<th style="width:13%">중</th></tr>';
   S.sheet.forEach((row, r) => {
@@ -1916,7 +1916,7 @@ $('pages').addEventListener('pointerdown', e => { if (e.target.closest('button,i
 $('pages').addEventListener('pointerup', e => {
   const s = sw; sw = null; if (!s) return;
   const dx = e.clientX - s.x, dy = e.clientY - s.y;
-  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.8 && Date.now() - s.t < 700) goPage(dx < 0 ? 1 : 0);
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.8 && Date.now() - s.t < 700) { if (dx > 0 && curPage === 0 && window.openTerrain) window.openTerrain(); else goPage(dx < 0 ? 1 : 0); }   // 순서: 선찰지형 ← 후찰풍세 → 일시천금
 }, true);
 
 
@@ -2395,7 +2395,8 @@ const ROT = { building: 1 };   // 각도를 틀 수 있는 것 (장애물)
   // ---------- 화면 열기·조작 ----------
   window.openTerrain = () => {
     st = site(); sel = -1; tool = null; parts = []; trail = null; ZM.k = 1; zoomClamp(); $("terTools").querySelectorAll(".tt").forEach(x => x.classList.remove("on")); window.__terIdle && window.__terIdle();
-    $('vTer').hidden = false; document.querySelectorAll('#terTools .tt').forEach(b => b.classList.remove('on'));
+    const vt = $('vTer'); vt.classList.add('off'); vt.hidden = false; void vt.offsetWidth; vt.classList.remove('off');   // 왼쪽에서 밀려 들어온다 (순서: 선찰지형 · 후찰풍세 · 일시천금)
+    document.querySelectorAll('#terTools .tt').forEach(b => b.classList.remove('on'));
     renderInfo(); run = true; last = 0; requestAnimationFrame(frame);
   };
   // ---------- 활터 이름으로 지형 저장·불러오기 ----------
@@ -2470,6 +2471,21 @@ const ROT = { building: 1 };   // 각도를 틀 수 있는 것 (장애물)
   const close = () => { run = false; $('vTer').hidden = true; setTimeout(() => window.tutAfterTer && window.tutAfterTer(), 0);
     if (window.__wxAskPending) { window.__wxAskPending = false; setTimeout(() => { if ($('tut').hidden && $('vTer').hidden) { window.wxCardTut && window.wxCardTut() ? 0 : window.showAsk && window.showAsk(); }  }, 400); }   /* 선찰지형에서 날씨를 읽었으면 과녁 화면에 오자마자 현장 바람 질문 */ /* 후찰풍세: 어디서 열었든 과녁 화면으로 */ try { if (typeof close3d === 'function') close3d(); ['vCal'].forEach(id => { const v = $(id); if (v) v.hidden = true; }); if (typeof curPage !== 'undefined' && curPage) goPage(0); } catch (e) {} syncSliders(); renderWxCard(); renderHits(); draw(); if (typeof update3d === 'function' && !$('v3d').hidden) update3d(); };
   $('terClose').onclick = close;
+  // 밀어서 넘기기: 선찰지형에서 왼쪽으로 밀면 후찰풍세. 배치도 위에서는 그리기와 겹치지 않게 오른쪽 끝(28 px)에서 시작할 때만
+  const slideClose = () => { const vt = $('vTer'); vt.classList.add('off'); setTimeout(() => { close(); vt.classList.remove('off'); }, 280); };
+  let tsw = null;
+  $('vTer').addEventListener('pointerdown', e => {
+    tsw = null; if (!$('vTerLib').hidden || !$('vTerIntro').hidden || !$('vTerAsk').hidden) return;
+    if (e.target === cv) { const r = cv.getBoundingClientRect(); if (e.clientX < r.right - 28) return; tsw = { x: e.clientX, y: e.clientY, t: Date.now(), edge: true }; e.stopImmediatePropagation(); return; }
+    if (e.target.closest('button,input,label,.veil')) return;
+    tsw = { x: e.clientX, y: e.clientY, t: Date.now() };
+  }, true);
+  $('vTer').addEventListener('pointermove', e => { if (tsw && tsw.edge) e.stopImmediatePropagation(); }, true);
+  $('vTer').addEventListener('pointerup', e => {
+    const q = tsw; tsw = null; if (!q) return; if (q.edge) e.stopImmediatePropagation();
+    const dx = e.clientX - q.x, dy = e.clientY - q.y;
+    if (dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.8 && Date.now() - q.t < 700) slideClose();
+  }, true);
   $('terTools').innerHTML = Object.entries(TYPES).map(([k, t]) => `<button class="tt" data-k="${k}">${t.ic}<span>${t.name}</span></button>`).join('');
   const cv = $('terCv');
   const lanePt = (cx, cy) => { const r = cv.getBoundingClientRect(); return { x: view.ix(cx - r.left), y: view.iy(cy - r.top), inside: cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom }; };
@@ -2631,8 +2647,9 @@ const ROT = { building: 1 };   // 각도를 틀 수 있는 것 (장애물)
   $('terBtn').onclick = () => window.openTerrain();
   // 앱을 열면: 지금 활터에 그린 지형지물이 없으면 선찰지형을 먼저 띄우고 그릴지 묻는다 (그려 두면 다음부터는 바로 과녁 화면)
   setTimeout(() => {
-    const D0 = loadAll()[site().key]; if ((D0 && D0.features && D0.features.length) || !$('vPers').hidden || !$('vStart').hidden || !$('vDir').hidden) return;
-    window.openTerrain(); $('vTerIntro').hidden = false;
+    if (!$('vPers').hidden || !$('vStart').hidden || !$('vDir').hidden || !$('vTer').hidden) return;
+    const D0 = loadAll()[site().key]; window.openTerrain();   // 첫 화면은 늘 선찰지형
+    if (!(D0 && D0.features && D0.features.length)) $('vTerIntro').hidden = false;   // 아직 그린 게 없으면 그릴지 묻는다
   }, 1700);
   $('tiSet').onclick = () => { $('vTerIntro').hidden = true; window.__terIdle && window.__terIdle(); };
   $('tiSkip').onclick = () => { $('vTerIntro').hidden = true; close(); };
