@@ -26,6 +26,7 @@ button{font:inherit;color:inherit}
 .btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;min-height:44px}
 .btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
 .btn.red{background:var(--red);color:#fff;border-color:var(--red)}
+.ic.redtab{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important}
 .btn:disabled{opacity:.45}
 header{height:var(--hh);display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid var(--line);background:var(--paper);padding-top:env(safe-area-inset-top)}
 header h1{font-size:15px;margin:0;flex:1;white-space:nowrap}
@@ -264,7 +265,9 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
 /* ---------- 활터 지형 (v4 시험) ---------- */
 #vTer{position:fixed;inset:0;z-index:55;background:var(--bg,#f3efe6);display:flex;flex-direction:column}
 #vTer[hidden]{display:none}
+.tmsg{margin:0 0 6px;padding:6px 10px;min-height:calc(2.7em + 12px);box-sizing:border-box;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;border-radius:8px;background:#fbefed;border:1px solid #efc9c4;color:#7a1f17;font-size:13px;font-weight:700;line-height:1.35;transition:background .3s}.tmsg.flash{background:#f6d6d1}.tmsg.idle{background:#f5f2ec;border-color:var(--line);color:var(--ink2);font-weight:600}
 #vTerLib{z-index:70;padding-top:calc(16px + env(safe-area-inset-top))}
+#vTerIntro{z-index:72;background:rgba(20,16,12,.25);align-items:flex-end;justify-content:center;padding:10px 10px calc(10px + env(safe-area-inset-bottom))}#vTerIntro .sheet{width:100%;box-shadow:0 -4px 22px rgba(0,0,0,.22)}
 #vTerAsk{z-index:72;background:transparent;align-items:flex-end;justify-content:center;pointer-events:none;padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
 #vTerAsk .sheet{pointer-events:auto;width:100%;box-shadow:0 -4px 22px rgba(0,0,0,.22)}
 .tlrow{display:flex;align-items:center;gap:6px;padding:8px 0;border-top:1px solid var(--line)}
@@ -314,9 +317,9 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
 </div>
 <header>
   <div class="wxcard" id="wxCard"></div>
-  <button class="ic" id="terBtn" aria-label="선찰지형" title="선찰지형" style="font-size:12.5px;font-weight:800;padding:0 9px;width:auto;min-width:64px;white-space:nowrap;letter-spacing:-.3px">선찰지형</button>
+  <button class="ic redtab" id="terBtn" aria-label="선찰지형" title="선찰지형" style="font-size:12.5px;font-weight:800;padding:0 9px;width:auto;min-width:64px;white-space:nowrap;letter-spacing:-.3px">선찰지형</button>
   <button class="ic" id="b3d" hidden aria-label="바람 3D 보기" title="바람 3D 보기" style="font-size:13px;font-weight:800">3D</button>
-  <button class="ic" id="pgBtn" aria-label="표잡기·일시천금 바꾸기" title="표잡기 ↔ 일시천금" style="font-size:12.5px;font-weight:800;padding:0 9px;width:auto;min-width:44px;white-space:nowrap;letter-spacing:-.3px">일시천금</button>
+  <button class="ic redtab" id="pgBtn" aria-label="표잡기·일시천금 바꾸기" title="표잡기 ↔ 일시천금" style="font-size:12.5px;font-weight:800;padding:0 9px;width:auto;min-width:44px;white-space:nowrap;letter-spacing:-.3px">일시천금</button>
   <button class="ic" id="persBtn" aria-label="개인 기준" title="개인 기준">⚙</button>
 </header>
 <main>
@@ -473,10 +476,11 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
 
 <!-- 바람 3D 보기 (v2 환경 화면 구성) -->
 <div id="vTer" hidden>
-  <div class="tbar"><b>선찰지형</b><span id="terSite" class="tsite"></span><span class="grow"></span><button class="btn" id="ter3d">3D</button><button class="btn" id="terElev">⛰ 고도</button><button class="btn" id="terClose" title="과녁 화면으로 돌아가기">후찰풍세</button></div>
+  <div class="tbar"><b style="color:var(--red);font-weight:900;font-size:19px;letter-spacing:-.4px">선찰지형</b><span id="terSite" class="tsite"></span><span class="grow"></span><button class="btn" id="ter3d">3D</button><button class="btn" id="terElev">⛰ 고도</button><button class="btn red" id="terClose" title="과녁 화면으로 돌아가기" style="font-weight:800">후찰풍세</button></div>
   <div class="tstage"><canvas id="terCv"></canvas></div>
   <div class="tpanel">
     <div class="tsel" id="terSel" hidden><span id="terSelName" class="grow"></span><button class="btn" id="terSmall">작게</button><button class="btn" id="terBig">크게</button><button class="btn" id="terRot">↻</button><button class="btn" id="terLow" hidden>높이−</button><button class="btn" id="terHigh" hidden>높이+</button><button class="btn" id="terDup">복제</button><button class="btn" id="terDel">지우기</button></div>
+    <div class="tmsg" id="terMsg"></div>
     <div class="ttools" id="terTools"></div>
     <div class="tinfo" id="terInfo"></div>
     <div class="row"><label class="ttog grow"><input type="checkbox" id="terUse"> 표잡기에 지형 반영 (자동)</label><button class="btn" id="terClr">전체 지우기</button></div>
@@ -494,6 +498,13 @@ input[type=text],input:not([type]),textarea,.field{-webkit-user-select:text;user
     <h2 id="tlListH" style="margin-top:14px">저장한 지형</h2>
     <div id="tlList"></div>
     <div class="row" id="tlListClose" style="margin-top:8px" hidden><span class="grow"></span><button class="btn" id="tlCancel2">닫기</button></div>
+  </div>
+</div>
+<div class="veil" id="vTerIntro" hidden>
+  <div class="sheet" style="max-width:380px">
+    <h2 style="color:var(--red)">선찰지형</h2>
+    <p style="margin:4px 0 12px;font-size:15px;line-height:1.5">지금 활터에 보이는 지형지물을 그리면 바람 계산값이 더 상세해질 수 있습니다.<br><b>건너뛰고 바람 탭으로 이동하시겠습니까?</b></p>
+    <div class="row"><button class="btn red grow" id="tiSet">설정할게요</button><button class="btn grow" id="tiSkip">건너뛸게요</button></div>
   </div>
 </div>
 <div class="veil" id="vTerAsk" hidden>
@@ -1993,7 +2004,9 @@ $('pages').addEventListener('pointerup', e => {
   window.spotWind = (title, body) => spot({ els: ['nU', 'nD', 'nL', 'nR'].map($), title, body, go: '알겠어요', later: '' });
   $('persBtn').addEventListener('click', () => { if (!T.hidden && cur && cur.el === $('persBtn')) hide(); });
   $('persBtn').addEventListener('click', () => { if (!$('vPers').hidden && !seen) { seen = true; try { localStorage.setItem('gukgung3-tut', '1'); } catch (e) {} } });
-  if (!seen) setTimeout(() => { if ($('vPers').hidden) step1(); }, 2100);
+  let step1Wait = false;   // 앱을 열 때 선찰지형이 먼저 뜨면, 처음 안내는 선찰지형을 닫은 뒤에
+  if (!seen) setTimeout(() => { if (!$('vTer').hidden || !$('vTerIntro').hidden) { step1Wait = true; return; } if ($('vPers').hidden) step1(); }, 2100);
+  window.tutAfterTer = () => { if (step1Wait && !seen) { step1Wait = false; setTimeout(() => { if (T.hidden && $('vPers').hidden && $('vTer').hidden) step1(); }, 450); } };
 })();
 // 개인 기준을 처음 펼쳤을 때(또는 안내 다시 보기): 상하·좌우 기준을 둘 다 움직이면 "초기값으로 고정"을 짚어 준다
 (() => {
@@ -2136,6 +2149,7 @@ $('testBtn').onclick = () => window.startTest && window.startTest();
     for (const f of D.features) {
       const sB = f.type === 'building' ? 0.6 : f.type === 'forest' ? 0.3 : f.type === 'hill' ? 0.25 * clamp((f.h || 5) / Math.max(5, f.r), 0.3, 1.2) : 0;
       if (!sB) continue;
+      const wt = f.wt ?? 1;   // 선으로 그어 겹쳐 놓은 것은 한 덩어리처럼 (겹친 만큼 덜 센다)
       let Re = f.r;
       if (f.type === 'building') { const ar = (f.a || 0) * Math.PI / 180, ax = Math.cos(ar), ay = -Math.sin(ar); Re = f.r * Math.abs(ax * -uy0 + ay * ux0) + 0.7 * f.r * Math.abs(ax * ux0 + ay * uy0); }
       Re = Math.max(2, Re);
@@ -2144,9 +2158,10 @@ $('testBtn').onclick = () => window.startTest && window.startTest();
       const al = dx * ux0 + dy * uy0, ac = -dx * uy0 + dy * ux0, c = al / rr, sn = ac / rr, q = (Re * Re) / (rr * rr);
       if (al > Re * 1.2) continue;   // 바로 뒤(소용돌이 쪽)는 아래 '막힘' 규칙이 맡는다
       const dAl = -q * (c * c - sn * sn), dAc = -q * (2 * c * sn);   // 앞에서는 느려지고, 옆에서는 빨라지며 바깥으로 휘어 돈다
-      bx += sB * (dAl * ux0 - dAc * uy0); by += sB * (dAl * uy0 + dAc * ux0);
+      bx += sB * wt * (dAl * ux0 - dAc * uy0); by += sB * wt * (dAl * uy0 + dAc * ux0);
     }
     if (bx || by) { const nx = ux + bx, ny = uy + by, m = Math.hypot(nx, ny) || 1; ux = nx / m; uy = ny / m; k *= clamp(m, 0.4, 1.6); if (m > 1.12) why = why || '돌아 나가는 바람'; else if (Math.hypot(bx, by) > 0.15) why = why || '휘어 도는 바람'; }
+    let cutMax = 0, cutWhy = null, hillUp = 1, hillLee = 0;   // 여러 개가 겹쳐도 곱하지 않고 가장 센 것 하나만 (나무 줄·이어진 둔덕이 지나치게 세지지 않게)
     for (const f of D.features) {
       const t = TYPES[f.type], dx = px - f.x, dy = py - f.y;
       const down = dx * ux + dy * uy, lat = Math.abs(-dx * uy + dy * ux), dist = Math.hypot(dx, dy);
@@ -2156,13 +2171,13 @@ $('testBtn').onclick = () => window.startTest && window.startTest();
         const half = f.type === 'building' ? f.r * Math.abs(axx * -uy + axy * ux) + 0.7 * f.r * Math.abs(axx * ux + axy * uy) : f.r;   // 바람에 맞서는 폭의 절반
         if (down > -f.r * 0.3 && down < L && lat < half + down * 0.12) {
           const q = clamp(down / L, 0, 1), cut = (f.type === 'forest' ? 0.55 : 0.65) * (1 - q);
-          if (cut > 0.05) { k *= 1 - cut; turb = Math.max(turb, (1 - q) * (f.type === 'forest' ? 0.5 : 0.8)); why = why || `${t.name} 뒤`; }
+          if (cut > 0.05) { if (cut > cutMax) { cutMax = cut; cutWhy = `${t.name} 뒤`; } turb = Math.max(turb, (1 - q) * (f.type === 'forest' ? 0.5 : 0.8)); }
         }
       } else if (f.type === 'hill') {
         // 높을수록, 가파를수록(높이 ÷ 크기) 꼭대기에서 세지고 뒤쪽은 약해지며 흔들린다
         const hh = f.h || t.h, steep = clamp(hh / Math.max(5, f.r), 0, 1.2), up = 0.6 * steep;
-        if (dist < f.r) { const g = 1 + up * (1 - dist / f.r); k *= down < 0 ? g : 1 + (g - 1) * 0.5; if (g > 1.08) why = why || '높은 지형 위'; }
-        else if (down > 0 && down < f.r * 2 + hh * 6 && lat < f.r) { k *= 1 - clamp(0.5 * steep, 0.1, 0.5); turb = Math.max(turb, clamp(steep, 0.3, 0.8)); why = why || '높은 지형 뒤'; }
+        if (dist < f.r) { const g = 1 + up * (1 - dist / f.r), gg = down < 0 ? g : 1 + (g - 1) * 0.5; if (gg > hillUp) hillUp = gg; }
+        else if (down > 0 && down < f.r * 2 + hh * 6 && lat < f.r) { hillLee = Math.max(hillLee, clamp(0.5 * steep, 0.1, 0.5)); turb = Math.max(turb, clamp(steep, 0.3, 0.8)); }
       } else if (f.type === 'pit') {
         const G = pitGroups(D).of.get(f); if (!G || G.lead !== f) continue;   // 겹친 것은 묶음 하나로 한 번만
         const gx = px - G.x, gy = py - G.y, dist = Math.hypot(gx, gy), down = gx * ux + gy * uy, dx = gx, dy = gy, f0 = f; { const f = { ...f0, x: G.x, y: G.y, r: G.r, h: G.h };
@@ -2190,6 +2205,9 @@ $('testBtn').onclick = () => window.startTest && window.startTest();
         if (dist < f.r) { k *= 1.12; why = why || '물 위'; }
       }
     }
+    if (hillUp > 1) { k *= hillUp; if (hillUp > 1.08) why = why || '높은 지형 위'; }
+    else if (hillLee > 0) { k *= 1 - hillLee; why = why || '높은 지형 뒤'; }
+    if (cutMax > 0) { k *= 1 - cutMax; why = why || cutWhy; }
     const E = D.elev;
     if (E && E.z) {   // 고도: 주변보다 높은 곳은 조금 세게, 낮은 곳은 조금 약하게
       const z = elevAt(E, px, py); if (z != null) k *= 1 + clamp((z - E.mean) / 120, -0.18, 0.18);
@@ -2286,11 +2304,12 @@ const ROT = { building: 1 };   // 각도를 틀 수 있는 것 (장애물)
     else if (f.type === 'valley') { g.translate(cx, cy); g.rotate(a); const wd = Math.max(8, f.r * 0.35) * s; const gr = g.createLinearGradient(-wd, 0, wd, 0); gr.addColorStop(0, 'rgba(60,90,70,0)'); gr.addColorStop(0.5, 'rgba(40,80,70,.55)'); gr.addColorStop(1, 'rgba(60,90,70,0)'); g.fillStyle = gr; g.fillRect(-wd, -R, 2 * wd, 2 * R); g.strokeStyle = 'rgba(30,60,60,.6)'; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(0, -R); g.lineTo(0, R); g.stroke(); }
     else if (f.type === 'water') { g.fillStyle = 'rgba(70,130,190,.65)'; g.beginPath(); g.ellipse(cx, cy, R, R * 0.7, a, 0, Math.PI * 2); g.fill(); }
     g.restore();
-    g.font = '15px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t.ic, cx, cy);
-    if (f.type === 'pit') { g.font = '800 11px sans-serif'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(`깊이 ${f.h ?? 3} m`, cx, cy + 17); g.fillStyle = '#2f4a5a'; g.fillText(`깊이 ${f.h ?? 3} m`, cx, cy + 17); }
-    if (f.type === 'hill') { g.font = '800 11px sans-serif'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(`높이 ${f.h ?? 5} m`, cx, cy + 17); g.fillStyle = '#5a3f1e'; g.fillText(`높이 ${f.h ?? 5} m`, cx, cy + 17); }
+    const lead = !f.g || f.lead;   // 선으로 그은 것은 첫 것에만 아이콘·높이 글씨
+    if (lead) { g.font = '15px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t.ic, cx, cy); }
+    if (!lead) { /* 글씨 생략 */ } else if (f.type === 'pit') { g.font = '800 11px sans-serif'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(`깊이 ${f.h ?? 3} m`, cx, cy + 17); g.fillStyle = '#2f4a5a'; g.fillText(`깊이 ${f.h ?? 3} m`, cx, cy + 17); }
+    if (lead && f.type === 'hill') { g.font = '800 11px sans-serif'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(`높이 ${f.h ?? 5} m`, cx, cy + 17); g.fillStyle = '#5a3f1e'; g.fillText(`높이 ${f.h ?? 5} m`, cx, cy + 17); }
     if (on) {
-      g.strokeStyle = '#e0352b'; g.lineWidth = 2.5; g.setLineDash([5, 4]); g.beginPath(); g.arc(cx, cy, Math.max(R, 14) + 6, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+      g.strokeStyle = '#e0352b'; g.lineWidth = 2.5; g.setLineDash([5, 4]); g.beginPath(); g.arc(cx, cy, f.g ? Math.max(R, 3) + 2 : Math.max(R, 14) + 6, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);   // 선으로 그은 것은 작은 테두리만
       if (ROT[f.type]) { const h = handlePos(f); g.strokeStyle = '#e0352b'; g.lineWidth = 2; g.beginPath(); g.moveTo(cx, cy); g.lineTo(h.x, h.y); g.stroke(); g.fillStyle = '#fff'; g.beginPath(); g.arc(h.x, h.y, 11, 0, Math.PI * 2); g.fill(); g.stroke(); g.fillStyle = '#e0352b'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('↻', h.x, h.y + 1); }
     }
   }
@@ -2300,7 +2319,7 @@ const ROT = { building: 1 };   // 각도를 틀 수 있는 것 (장애물)
     if (cv.width !== Math.round(r.width * dpr) || cv.height !== Math.round(r.height * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
     fit(cv); const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
     const D = data(), dt = Math.min(0.05, (now - (last || now)) / 1000); last = now;
-    drawBase(g, D); D.features.forEach((f, i) => drawFeature(g, f, i === sel));
+    drawBase(g, D); { const sg = D.features[sel] && D.features[sel].g; D.features.forEach((f, i) => drawFeature(g, f, i === sel || (sg && f.g === sg))); } drawStroke(g);
     // 바람 흐름: 알갱이가 예측된 바람을 따라 흐른다 (약하면 파랑, 보통 흰색, 세면 주황)
     const w = wind0(), sp = Math.hypot(w.x, w.y);
     if (sp >= 0.05) {
@@ -2337,7 +2356,7 @@ const ROT = { building: 1 };   // 각도를 틀 수 있는 것 (장애물)
     const D = data(), w = wind0(), sp = Math.hypot(w.x, w.y), p = lanePredict(D);
     const sel1 = sel >= 0 ? D.features[sel] : null;
     $('terSel').hidden = !sel1; const hp = sel1 && (sel1.type === 'hill' || sel1.type === 'pit'); ['terLow', 'terHigh'].forEach(id => $(id).hidden = !hp); if (hp) { const w = sel1.type === 'pit' ? '깊이' : '높이'; $('terLow').textContent = w + '−'; $('terHigh').textContent = w + '+'; } $('terRot').hidden = !(sel1 && ROT[sel1.type]);
-    if (sel1) $('terSelName').textContent = `${TYPES[sel1.type].ic} ${TYPES[sel1.type].name} ${+(sel1.r * 2).toFixed(1)} m${ROT[sel1.type] ? ` · ${Math.round(sel1.a || 0)}° (↻ 손잡이로 돌리기)` : ''}${sel1.type === 'hill' ? ` · 높이 ${sel1.h ?? 5} m` : sel1.type === 'pit' ? ` · 깊이 ${sel1.h ?? 3} m` : ''}`;
+    if (sel1) $('terSelName').textContent = `${TYPES[sel1.type].ic} ${TYPES[sel1.type].name}${sel1.g ? ` 선 ${D.features.filter(m => m.g === sel1.g).length}개 ·` : ''} ${+(sel1.r * 2).toFixed(1)} m${ROT[sel1.type] ? ` · ${Math.round(sel1.a || 0)}° (↻ 손잡이로 돌리기)` : ''}${sel1.type === 'hill' ? ` · 높이 ${sel1.h ?? 5} m` : sel1.type === 'pit' ? ` · 깊이 ${sel1.h ?? 3} m` : ''}`;
     let h = '';
     if (sp < 0.05) h = '지금은 바람이 없어 예측할 게 없습니다.';
     else if (!D.features.length && !D.elev) h = '아래에서 나무나 장애물을 골라 배치도에 찍어 보세요. 바람이 지형을 지나며 어떻게 바뀌는지 예측합니다.';
@@ -2354,7 +2373,7 @@ const ROT = { building: 1 };   // 각도를 틀 수 있는 것 (장애물)
 
   // ---------- 화면 열기·조작 ----------
   window.openTerrain = () => {
-    st = site(); sel = -1; tool = null; parts = []; trail = null;
+    st = site(); sel = -1; tool = null; parts = []; trail = null; $("terTools").querySelectorAll(".tt").forEach(x => x.classList.remove("on")); window.__terIdle && window.__terIdle();
     $('vTer').hidden = false; document.querySelectorAll('#terTools .tt').forEach(b => b.classList.remove('on'));
     renderInfo(); run = true; last = 0; requestAnimationFrame(frame);
   };
@@ -2427,46 +2446,99 @@ const ROT = { building: 1 };   // 각도를 틀 수 있는 것 (장애물)
     const done = load => { $('vTerAsk').hidden = true; if (load) applyLib(best); setTimeout(next, load ? 900 : 200); };
     $('taYes').onclick = () => done(true); $('taNo').onclick = () => done(false);
   };
-  const close = () => { run = false; $('vTer').hidden = true; /* 후찰풍세: 어디서 열었든 과녁 화면으로 */ try { if (typeof close3d === 'function') close3d(); ['vCal'].forEach(id => { const v = $(id); if (v) v.hidden = true; }); if (typeof curPage !== 'undefined' && curPage) goPage(0); } catch (e) {} syncSliders(); renderWxCard(); renderHits(); draw(); if (typeof update3d === 'function' && !$('v3d').hidden) update3d(); };
+  const close = () => { run = false; $('vTer').hidden = true; setTimeout(() => window.tutAfterTer && window.tutAfterTer(), 0); /* 후찰풍세: 어디서 열었든 과녁 화면으로 */ try { if (typeof close3d === 'function') close3d(); ['vCal'].forEach(id => { const v = $(id); if (v) v.hidden = true; }); if (typeof curPage !== 'undefined' && curPage) goPage(0); } catch (e) {} syncSliders(); renderWxCard(); renderHits(); draw(); if (typeof update3d === 'function' && !$('v3d').hidden) update3d(); };
   $('terClose').onclick = close;
   $('terTools').innerHTML = Object.entries(TYPES).map(([k, t]) => `<button class="tt" data-k="${k}">${t.ic}<span>${t.name}</span></button>`).join('');
   const cv = $('terCv');
   const lanePt = (cx, cy) => { const r = cv.getBoundingClientRect(); return { x: view.ix(cx - r.left), y: view.iy(cy - r.top), inside: cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom }; };
   const addAt = (k, x, y) => { const D = data(), t = TYPES[k]; D.features.push({ type: k, x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, r: t.r, h: t.h, a: 0 }); save(D); sel = D.features.length - 1; renderInfo(); };
+  // ---------- 손으로 그어 깔기 ----------
+  // 나무: 3 m 간격으로 한 그루씩(폭 3 m). 높은·낮은 지형: 반지름의 절반 간격으로 겹쳐 놓아 하나로 이어진 둔덕·꺼진 땅. 장애물: 끝을 맞대어 담처럼
+  let stroke = null;
+  const SPACE = { forest: 3, hill: 7.5, pit: 7.5, building: 10 };
+  const lineR = k => k === 'forest' ? 1.5 : TYPES[k].r;
+  function strokePut(x, y, dirx, diry){
+    const D = data(), k = stroke.k, r = lineR(k), t = TYPES[k];
+    const f = { type: k, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, r, h: t.h, a: 0, g: stroke.g, wt: Math.min(1, SPACE[k] / (2 * r)) };
+    if (k === 'building') f.a = Math.round(((Math.atan2(-diry, dirx) * 180 / Math.PI) + 360) % 360 / 5) * 5;
+    if (!stroke.n) f.lead = 1;
+    D.features.push(f); stroke.n++; save(D);
+  }
+  // 손이 흔들려도 곧게: 누른 곳(시작점)과 손가락 끝(끝점)을 잇는 곧은 선 위에 일정한 간격으로 놓는다.
+  // 각도는 5°씩 맞추고, 화살 길과 나란하거나 직각에 가까우면(±4°) 딱 맞춘다. 길이는 간격의 배수로
+  function strokeLine(st0){
+    const sp = SPACE[st0.k]; let dx = st0.ex - st0.x0, dy = st0.ey - st0.y0; const L0 = Math.hypot(dx, dy);
+    let a = Math.atan2(dy, dx) * 180 / Math.PI; const a90 = Math.round(a / 90) * 90; a = Math.abs(a - a90) <= 4 ? a90 : Math.round(a / 5) * 5;
+    const n = Math.max(1, Math.round(L0 / sp)), L = n * sp, ar = a * Math.PI / 180, ux = Math.cos(ar), uy = Math.sin(ar);
+    return { n, L, ux, uy, a: ((a % 360) + 360) % 360, pts: Array.from({ length: n + 1 }, (_, i) => ({ x: st0.x0 + ux * sp * i, y: st0.y0 + uy * sp * i })) };
+  }
+  function strokeTo(x, y){
+    const st0 = stroke; st0.ex = x; st0.ey = y;
+    if (!st0.moved && Math.hypot(x - st0.x0, y - st0.y0) >= Math.min(2, SPACE[st0.k] * 0.5)) { st0.moved = true; clearTimeout(toast.t); $('toast').classList.remove('on'); }   // 긋기 시작하면 안내 글을 치워 미리 보기가 가리지 않게
+  }
+  function drawStroke(g){   // 긋는 동안 미리 보기: 곧은 선과 놓일 자리
+    const st0 = stroke; if (!st0 || !st0.moved || !view) return;
+    const ln = strokeLine(st0), { X, Y, s } = view, r = lineR(st0.k) * s, p0 = ln.pts[0], p1 = ln.pts[ln.n];
+    g.save(); g.strokeStyle = '#e0352b'; g.lineWidth = 2; g.setLineDash([6, 5]); g.beginPath(); g.moveTo(X(p0.x), Y(p0.y)); g.lineTo(X(p1.x), Y(p1.y)); g.stroke(); g.setLineDash([]);
+    g.fillStyle = st0.k === 'forest' ? 'rgba(46,110,56,.55)' : st0.k === 'hill' ? 'rgba(170,130,80,.28)' : st0.k === 'pit' ? 'rgba(60,85,95,.28)' : 'rgba(120,112,104,.45)';
+    ln.pts.forEach(q => { g.beginPath(); g.arc(X(q.x), Y(q.y), Math.max(2.5, st0.k === 'building' ? r * 0.8 : r), 0, Math.PI * 2); g.fill(); });
+    const lab = `${Math.round(ln.L + (st0.k === 'building' ? 2 * lineR(st0.k) : st0.k === 'forest' ? 0 : 2 * lineR(st0.k)))} m · ${ln.n + 1}${st0.k === 'forest' ? '그루' : '개'}${ln.a % 90 === 0 ? (ln.a % 180 === 0 ? ' · 직각' : ' · 나란히') : ''}`;
+    g.font = '800 12px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'bottom'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.9)'; const lx = clamp(X(p1.x), g.measureText(lab).width / 2 + 6, view.W - g.measureText(lab).width / 2 - 6), ly = Math.max(16, Y(p1.y) - 10); g.strokeText(lab, lx, ly); g.fillStyle = '#b3261e'; g.fillText(lab, lx, ly);
+    g.restore();
+  }
+  function endStroke(cancel){
+    const st0 = stroke; stroke = null;
+    if (!st0.moved) { if (!cancel) addAt(st0.k, st0.x0, st0.y0); return; }   // 긋지 않고 눌렀다 떼면 예전처럼 한 개
+    if (cancel) return;
+    const ln = strokeLine({ ...st0, }); stroke = st0; ln.pts.forEach(q => strokePut(q.x, q.y, ln.ux, ln.uy)); stroke = null;
+    const D = data(), mem = D.features.filter(f => f.g === st0.g);
+    if (mem.length === 1) { delete mem[0].g; delete mem[0].lead; delete mem[0].wt; mem[0].r = TYPES[st0.k].r; save(D); }
+    sel = D.features.indexOf(mem[mem.length - 1]); renderInfo();
+    const nm = TYPES[st0.k].name;
+    toast(st0.k === 'forest' ? `나무 ${mem.length}그루를 3 m 간격으로 심었습니다` : st0.k === 'building' ? `장애물 ${mem.length}개를 이어 놓았습니다` : `${nm}을 길이 약 ${Math.round((mem.length - 1) * SPACE[st0.k] + 2 * lineR(st0.k))} m로 이었습니다`);
+  }
   // 지형지물 아이콘을 고르면 고른 채로 있고, 배치도를 누를 때마다 그 자리에 하나씩 생긴다. 아이콘을 다시 누르면 고르기 끝
-  const setTool = k => { tool = k; $('terTools').querySelectorAll('.tt').forEach(x => x.classList.toggle('on', x.dataset.k === tool)); };
+  window.__terIdle = () => { const tm = $('terMsg'); if (!tm) return; tm.classList.add('idle');
+    tm.textContent = tool ? (tool === 'forest' ? '🌳 나무: 누르면 한 덩이 · 시작점에서 쓱 그으면 3 m 간격 곧은 줄' : `${TYPES[tool].ic} ${TYPES[tool].name}: 누르면 하나 · 시작점에서 쓱 그으면 곧게 이어짐`) + ' (아이콘을 다시 누르면 끝)'
+      : '아래 아이콘을 골라 배치도에 놓으세요 · 놓인 것을 누르면 옮기거나 고칠 수 있습니다'; };
+  const setTool = k => { tool = k; clearTimeout(toast.m); window.__terIdle(); $('terTools').querySelectorAll('.tt').forEach(x => x.classList.toggle('on', x.dataset.k === tool)); };
   $('terTools').querySelectorAll('.tt').forEach(b => b.onclick = () => {
-    setTool(tool === b.dataset.k ? null : b.dataset.k);
-    toast(tool ? `${TYPES[tool].name}: 배치도를 누르는 곳마다 생깁니다 (아이콘을 다시 누르면 끝)` : '놓기를 마쳤습니다 — 지형지물을 눌러 고치세요');
+    setTool(tool === b.dataset.k ? null : b.dataset.k);   // 안내는 아래 안내 줄에 계속 보인다
   });
   cv.addEventListener('pointerdown', e => {
     if (!view) return; e.preventDefault();
     const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, x = view.ix(px), y = view.iy(py), D = data();
-    if (tool) { addAt(tool, x, y); return; }   // 고른 지형지물이 누른 자리에 생긴다 (고른 상태 유지)
+    if (tool) { stroke = { k: tool, x0: x, y0: y, ex: x, ey: y, n: 0, moved: false, g: 'g' + Date.now().toString(36) }; try { cv.setPointerCapture(e.pointerId); } catch (er) {} return; }   // 누르면 한 개, 그으면 선을 따라 이어서 깔린다
     const cur = D.features[sel];
     if (cur && ROT[cur.type]) { const h = handlePos(cur); if (Math.hypot(px - h.x, py - h.y) < 18) { drag = { rot: true, i: sel }; try { cv.setPointerCapture(e.pointerId); } catch (er) {} return; } }
     sel = hitTest(x, y); renderInfo();
     if (sel >= 0) { drag = { i: sel, dx: x - D.features[sel].x, dy: y - D.features[sel].y }; try { cv.setPointerCapture(e.pointerId); } catch (er) {} }
   });
   cv.addEventListener('pointermove', e => {
+    if (stroke) { const r = cv.getBoundingClientRect(); strokeTo(view.ix(e.clientX - r.left), view.iy(e.clientY - r.top)); return; }
     if (!drag) return; const r = cv.getBoundingClientRect(), D = data(), f = D.features[drag.i];
     if (drag.rot) {   // 손잡이를 돌리면 각도가 따라간다
       const dx = e.clientX - r.left - view.X(f.x), dy = e.clientY - r.top - view.Y(f.y);
       let a = f.type === 'valley' ? Math.atan2(dx, -dy) : Math.atan2(dy, dx); a = (a * 180 / Math.PI + 360) % 360;
       f.a = Math.round(a / 5) * 5; save(D); renderInfo(); return;
     }
-    f.x = Math.round((view.ix(e.clientX - r.left) - drag.dx) * 2) / 2; f.y = Math.round((view.iy(e.clientY - r.top) - drag.dy) * 2) / 2; save(D);
+    const nx = Math.round((view.ix(e.clientX - r.left) - drag.dx) * 2) / 2, ny = Math.round((view.iy(e.clientY - r.top) - drag.dy) * 2) / 2, mx = nx - f.x, my = ny - f.y;
+    if (f.g) D.features.forEach(m => { if (m.g === f.g) { m.x = Math.round((m.x + mx) * 2) / 2; m.y = Math.round((m.y + my) * 2) / 2; } }); else { f.x = nx; f.y = ny; }   // 선으로 그은 것은 통째로 옮긴다
+    save(D);
   });
-  ['pointerup', 'pointercancel'].forEach(t => cv.addEventListener(t, () => { if (drag) { drag = null; renderInfo(); } }));
-  const edit = fn => { const D = data(), f = D.features[sel]; if (!f) return; fn(f, D); save(D); renderInfo(); };
+  ['pointerup', 'pointercancel'].forEach(t => cv.addEventListener(t, ev => { if (stroke) { endStroke(ev.type === 'pointercancel'); return; } if (drag) { drag = null; renderInfo(); } }));
+  const edit = fn => { const D = data(), f = D.features[sel]; if (!f) return; if (f.g) D.features.filter(m => m.g === f.g).forEach(m => fn(m, D)); else fn(f, D); save(D); renderInfo(); };   // 선으로 그은 것은 함께 바뀐다
   $('terBig').onclick = () => edit(f => { f.r = Math.min(120, f.r * 1.25); });
   $('terSmall').onclick = () => edit(f => { f.r = Math.max(1, f.r / 1.25); });
   $('terRot').onclick = () => edit(f => { f.a = ((f.a || 0) + 15) % 360; });
   // 복제: 크기·각도·종류를 그대로 하나 더 만들어 옆에 놓는다 (끌어서 원하는 자리로)
   $('terHigh').onclick = () => edit(f => { const d = f.h ?? TYPES[f.type].h; f.h = Math.min(60, d + (d >= 20 ? 5 : 1)); });
   $('terLow').onclick = () => edit(f => { const d = f.h ?? TYPES[f.type].h; f.h = Math.max(1, d - (d > 20 ? 5 : 1)); });
-  $('terDup').onclick = () => edit((f, D) => { const c = { ...f, x: Math.round((f.x + f.r * 2 + 3) * 2) / 2 }; if (c.x > 70) c.x = Math.round((f.x - f.r * 2 - 3) * 2) / 2; D.features.push(c); sel = D.features.length - 1; toast('복제했습니다 — 끌어서 원하는 자리에 놓으세요'); });
-  $('terDel').onclick = () => edit((f, D) => { D.features.splice(sel, 1); sel = -1; });
+  $('terDup').onclick = () => { const D0 = data(), f0 = D0.features[sel]; if (f0 && f0.g) {   // 선 통째로 옆에 복제
+      const mem = D0.features.filter(m => m.g === f0.g), xs = mem.map(m => m.x), w = Math.max(...xs) - Math.min(...xs) + 2 * f0.r + 3, g2 = 'g' + Date.now().toString(36);
+      const off = Math.max(...xs) + w > 70 ? -w : w; mem.forEach(m => D0.features.push({ ...m, x: Math.round((m.x + off) * 2) / 2, g: g2 })); sel = D0.features.length - 1; save(D0); renderInfo(); toast('선을 통째로 복제했습니다 — 끌어서 옮기세요'); return; }
+    edit((f, D) => { const c = { ...f, x: Math.round((f.x + f.r * 2 + 3) * 2) / 2 }; if (c.x > 70) c.x = Math.round((f.x - f.r * 2 - 3) * 2) / 2; D.features.push(c); sel = D.features.length - 1; toast('복제했습니다 — 끌어서 원하는 자리에 놓으세요'); }); };
+  $('terDel').onclick = () => { const D = data(), f = D.features[sel]; if (!f) return; if (f.g) { const n = D.features.filter(m => m.g === f.g).length; D.features = D.features.filter(m => m.g !== f.g); toast(`이어 놓은 ${TYPES[f.type].name} ${n}개를 지웠습니다`); } else D.features.splice(sel, 1); sel = -1; save(D); renderInfo(); };
   // 지형지물 전체 지우기: 실수로 누르지 않게 한 번 더 눌러야 지운다 (고도 자료는 남김)
   let clrArm = null;
   $('terClr').onclick = () => {
@@ -2497,13 +2569,27 @@ const ROT = { building: 1 };   // 각도를 틀 수 있는 것 (장애물)
     $('terElev').disabled = false; $('terElev').textContent = '⛰ 고도';
   };
   $('terBtn').onclick = () => window.openTerrain();
+  // 앱을 열면: 지금 활터에 그린 지형지물이 없으면 선찰지형을 먼저 띄우고 그릴지 묻는다 (그려 두면 다음부터는 바로 과녁 화면)
+  setTimeout(() => {
+    const D0 = loadAll()[site().key]; if ((D0 && D0.features && D0.features.length) || !$('vPers').hidden || !$('vStart').hidden || !$('vDir').hidden) return;
+    window.openTerrain(); $('vTerIntro').hidden = false;
+  }, 1700);
+  $('tiSet').onclick = () => { $('vTerIntro').hidden = true; window.__terIdle && window.__terIdle(); };
+  $('tiSkip').onclick = () => { $('vTerIntro').hidden = true; close(); };
   $('ter3d').onclick = () => { open3d(); };   // 지형 창 위로 3D가 열리고, 닫으면 지형 창으로 돌아온다
 })();
 // 안드로이드 브라우저는 주소창·아래 메뉴가 나타났다 사라지며 보이는 높이가 바뀐다 → 실제 보이는 높이로 창 크기를 맞춘다
 function setVVH(){ const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight; document.documentElement.style.setProperty('--vvh', h + 'px'); }
 setVVH(); window.addEventListener('resize', setVVH); if (window.visualViewport) window.visualViewport.addEventListener('resize', setVVH);
 // ---------- 공통 ----------
-function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2800); }
+function toast(m){
+  // 선찰지형 화면에서는 배치도를 가리지 않게 아래 패널의 안내 줄에 띄운다
+  const tv = $('vTer'), tm = $('terMsg');
+  if (tv && tm && !tv.hidden && $('v3d').hidden && $('vTerLib').hidden) {
+    tm.textContent = m; tm.classList.remove('idle'); tm.classList.add('flash'); clearTimeout(toast.f); toast.f = setTimeout(() => tm.classList.remove('flash'), 350);
+    clearTimeout(toast.m); toast.m = setTimeout(() => { window.__terIdle && window.__terIdle(); }, 5000); $('toast').classList.remove('on'); return;
+  }
+  const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2800); }
 new ResizeObserver(() => draw()).observe(cv);
 $('guideBtn').style.opacity = guide ? 1 : 0.55;
 // 앱을 열면 늘 ①부터: 날씨를 읽을지 묻는다 (오늘 값은 남아 있어 아니오를 누르면 그대로 이어서)
