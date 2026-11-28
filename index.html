@@ -507,15 +507,15 @@ function draw(){
   const botH = basePick ? $('bpBar').offsetHeight + 16 : panel ? panel.offsetHeight * (!$('vPers').hidden ? 0.85 : S.step === 3 ? 1 : S.step === 2 ? 1 : 0.55) + 12 + nudgeRow : 12;
   const a = aim(), c0 = center0();
   // 과녁 둘레 여백: 아래로 1.6 m(짧은 화살), 위로 0.6 m, 좌우 0.9 m까지 늘 보이게
-  const mg = S.step === 3 ? { s: 0.9, b: 1.6, t: 0.6 } : !$('vPers').hidden || basePick ? { s: 0.1, b: 0.15, t: 0.15 } : { s: 0.3, b: 0.35, t: 0.35 };
-  const pts = basePick ? [{ z: -TW / 2 - mg.s, y: -mg.b }, { z: TW / 2 + mg.s, y: TH + mg.t }, { z: P.baseZ || 0, y: P.baseY }]   // 손으로 찍을 때는 과녁 전체가 꽉 차게
+  const mg = S.step === 3 ? { s: 0.9, b: 1.6, t: 0.6 } : !$('vPers').hidden ? { s: 0.1, b: 0.15, t: 0.15 } : { s: 0.3, b: 0.35, t: 0.35 };
+  const pts = basePick ? [{ z: -TW / 2 - mg.s, y: -mg.b }, { z: TW / 2 + mg.s, y: TH + mg.t }]   // 손으로 찍을 때는 평소 화면 크기 그대로, 찍는 동안 확대·축소되지 않게
     : [{ z: -TW / 2 - mg.s, y: -mg.b }, { z: TW / 2 + mg.s, y: TH + mg.t }, a, ...S.shots, ...(S.hits || []).slice(-12)];
   if (S.step === 3 && !finalView) pts.push(expected());
   let zmin = Math.min(...pts.map(p => p.z)) - 0.35, zmax = Math.max(...pts.map(p => p.z)) + 0.35;
   let ymin = Math.min(...pts.map(p => p.y)) - 0.3, ymax = Math.max(...pts.map(p => p.y)) + 0.35;
   const m = Math.max(Math.abs(zmin), Math.abs(zmax)); zmin = -m; zmax = m;   // 과녁을 가운데에
   const fh = Math.max(120, h - topH - botH);
-  const persOpen = !$('vPers').hidden || basePick;   // 개인 기준을 맞출 때는 좌우 버튼이 숨으니 과녁을 크게
+  const persOpen = !$('vPers').hidden;   // 개인 기준을 맞출 때는 좌우 버튼이 숨으니 과녁을 크게
   const side = S.step === 2 && !persOpen ? 128 : 16;   // 표잡기에서는 좌우 버튼 자리를 비운다
   const s = Math.min((w - side) / (zmax - zmin), fh / (ymax - ymin)) * (persOpen ? 0.97 : 0.8);   // 과녁을 조금 작게 → 둘레 여유를 넓게
   const cz = 0, cyv = (ymin + ymax) / 2, oy = topH + fh / 2;
